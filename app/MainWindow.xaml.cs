@@ -182,6 +182,8 @@ public partial class MainWindow : Window
     // 圆角半径（0~23），默认15，通过右键菜单滑块调节
     private double _widgetCornerRadius = 15d;
     private double _widgetOpacity = 1d;
+    private bool _mainSpectrumEnabled = true;
+    private MainSpectrumPosition _mainSpectrumPosition = MainSpectrumPosition.Top;
     private bool _useGradientBackground;
     private GradientBackgroundMode _gradientBackgroundMode = GradientBackgroundMode.Linear;
 
@@ -244,6 +246,8 @@ public partial class MainWindow : Window
         public string ProgressBarDisplayMode { get; set; } = string.Empty;
         public double CornerRadius { get; set; } = 15d;
         public double Opacity { get; set; } = 1d;
+        public bool MainSpectrumEnabled { get; set; } = true;
+        public string MainSpectrumPosition { get; set; } = "Top";
         public bool UseGradientBackground { get; set; }
         public string GradientBackgroundMode { get; set; } = "Linear";
     }
@@ -387,6 +391,7 @@ public partial class MainWindow : Window
         WidgetBorder.Opacity = 1d;
         SourcePickerToggleScale.ScaleY = 1d;
         LoadWidgetPreferences();
+        InitializeMainSpectrum();
         ApplyWidgetCornerRadius();
         ApplyWidgetOpacity();
         ApplyProgressBarDisplayMode();
@@ -459,6 +464,7 @@ public partial class MainWindow : Window
     {
         SystemEvents.UserPreferenceChanged -= SystemEvents_UserPreferenceChanged;
         StopVisibilityGuard();
+        StopMainSpectrum();
         StopLyricTimer();
         DetachSessionHandlers(_session);
         StopKuGouWindowTitleHook();

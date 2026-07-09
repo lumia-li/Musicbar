@@ -212,6 +212,38 @@ public partial class MainWindow : Window
         GradientAngleMenuItem.IsChecked = _gradientBackgroundMode == GradientBackgroundMode.Angle;
     }
 
+    private void MainSpectrumEnabledMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        _mainSpectrumEnabled = MainSpectrumEnabledMenuItem?.IsChecked == true;
+        UpdateMainSpectrumPopupVisibility();
+        SaveWidgetPreferences();
+    }
+
+    private void MainSpectrumTopPositionMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        SetMainSpectrumPosition(MainSpectrumPosition.Top);
+    }
+
+    private void MainSpectrumBottomPositionMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        SetMainSpectrumPosition(MainSpectrumPosition.Bottom);
+    }
+
+    private void UpdateMainSpectrumMenuItem()
+    {
+        if (MainSpectrumEnabledMenuItem is null)
+        {
+            return;
+        }
+
+        var state = MainSpectrumMenuState.Compute(_mainSpectrumEnabled, _mainSpectrumPosition);
+        MainSpectrumEnabledMenuItem.IsChecked = state.EnabledChecked;
+        MainSpectrumTopPositionMenuItem.IsChecked = state.TopChecked;
+        MainSpectrumBottomPositionMenuItem.IsChecked = state.BottomChecked;
+    }
+
     private Color ApplyWidgetOpacityToColor(Color color)
     {
         var alpha = (byte)Math.Clamp((int)Math.Round(255d * _widgetOpacity), 1, 255);
@@ -267,6 +299,7 @@ public partial class MainWindow : Window
         WidgetOpacitySlider.Value = opacityPercent;
         WidgetOpacityValueText.Text = opacityPercent.ToString(CultureInfo.InvariantCulture);
         UpdateGradientMenuItems();
+        UpdateMainSpectrumMenuItem();
         UpdateNteDetachedLayoutMenuItem();
         UpdateNtePlaybackAdjustmentMenuItem();
     }
@@ -433,28 +466,51 @@ public partial class MainWindow : Window
         var fromTop = Top;
         var easing = new QuadraticEase { EasingMode = EasingMode.EaseOut };
 
-        Left = targetLeft;
-        Top = targetTop;
-
-        BeginAnimation(Window.LeftProperty, new DoubleAnimation
+        var leftAnimation = new DoubleAnimation
         {
             From = fromLeft,
             To = targetLeft,
             Duration = RestoreAnimationDuration,
             EasingFunction = easing,
             FillBehavior = FillBehavior.Stop
-        });
+        };
+        leftAnimation.Completed += (_, _) =>
+        {
+            BeginAnimation(Window.LeftProperty, null);
+            Left = targetLeft;
+        };
 
-        BeginAnimation(Window.TopProperty, new DoubleAnimation
+        var topAnimation = new DoubleAnimation
         {
             From = fromTop,
             To = targetTop,
             Duration = RestoreAnimationDuration,
             EasingFunction = easing,
             FillBehavior = FillBehavior.Stop
-        });
+        };
+        topAnimation.Completed += (_, _) =>
+        {
+            BeginAnimation(Window.TopProperty, null);
+            Top = targetTop;
+        };
+
+        BeginAnimation(Window.LeftProperty, leftAnimation);
+        BeginAnimation(Window.TopProperty, topAnimation);
     }
 
+}
+
+internal readonly record struct RestoreWindowPositionAnimationPlan(
+    bool SetTargetBeforeAnimation,
+    bool CommitTargetAfterAnimation)
+{
+    public static RestoreWindowPositionAnimationPlan Default { get; } = new(
+        SetTargetBeforeAnimation: false,
+        CommitTargetAfterAnimation: true);
+}
+
+public partial class MainWindow : Window
+{
     private void AnimateRestoreEmphasis()
     {
         WidgetRestoreScaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, null);

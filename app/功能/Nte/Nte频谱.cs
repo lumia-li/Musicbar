@@ -117,13 +117,15 @@ partial class MainWindow
             var target = bars[i];
             _nteSpectrumSmoothedBars[i] += (target - _nteSpectrumSmoothedBars[i]) * 0.42d;
             _nteSpectrumCurrentBars[i] = _nteSpectrumSmoothedBars[i];
-            var height = 2d + (_nteSpectrumSmoothedBars[i] * 10d);
+            var visual = NteSpectrumBarVisual.ForMainPlayer(_nteSpectrumSmoothedBars[i]);
 
             NteSpectrumBars.Items.Add(new Border
             {
                 Width = 2,
-                Height = height,
-                Margin = new Thickness(0, Math.Max(0d, 12d - height), 1, 0),
+                Height = visual.Height,
+                Margin = new Thickness(0, visual.TopMargin, 1, 0),
+                CornerRadius = new CornerRadius(1),
+                VerticalAlignment = VerticalAlignment.Top,
                 Background = new SolidColorBrush(Color.FromRgb(212, 223, 49))
             });
         }
@@ -263,4 +265,13 @@ partial class MainWindow
     }
 
     private sealed record NteSpectrumSnapshot(float[] Samples, int SampleRate);
+}
+
+internal readonly record struct NteSpectrumBarVisual(double Height, double TopMargin)
+{
+    public static NteSpectrumBarVisual ForMainPlayer(double energy)
+    {
+        var clamped = Math.Clamp(energy, 0d, 1d);
+        return new NteSpectrumBarVisual(2d + (clamped * 10d), 0d);
+    }
 }

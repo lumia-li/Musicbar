@@ -860,6 +860,25 @@
                                       Click="GradientAngleMenuItem_Click"/>
                         </MenuItem>
                     </MenuItem>
+                    <MenuItem x:Name="MainSpectrumMenuItem"
+                              Header="音乐频谱"
+                              Style="{StaticResource WidgetContextMenuItemStyle}">
+                        <MenuItem x:Name="MainSpectrumEnabledMenuItem"
+                                  Header="启用"
+                                  Style="{StaticResource WidgetContextMenuItemStyle}"
+                                  IsCheckable="True"
+                                  Click="MainSpectrumEnabledMenuItem_Click"/>
+                        <MenuItem x:Name="MainSpectrumTopPositionMenuItem"
+                                  Header="上方"
+                                  Style="{StaticResource WidgetContextMenuItemStyle}"
+                                  IsCheckable="True"
+                                  Click="MainSpectrumTopPositionMenuItem_Click"/>
+                        <MenuItem x:Name="MainSpectrumBottomPositionMenuItem"
+                                  Header="下方"
+                                  Style="{StaticResource WidgetContextMenuItemStyle}"
+                                  IsCheckable="True"
+                                  Click="MainSpectrumBottomPositionMenuItem_Click"/>
+                    </MenuItem>
                 </MenuItem>
                 <MenuItem Style="{StaticResource WidgetContextMenuItemStyle}"
                           PreviewMouseRightButtonDown="CloseProgramMenuItem_PreviewMouseRightButtonDown"
@@ -890,7 +909,33 @@
                     SnapsToDevicePixels="True">
                 <Grid>
                 <Grid x:Name="SystemPlayerPage">
-                <Grid Margin="9,5">
+                <Grid x:Name="MainSpectrumHost"
+                      Height="16"
+                      Margin="9,0,9,0"
+                      VerticalAlignment="Top"
+                      Panel.ZIndex="0"
+                      IsHitTestVisible="False"
+                      ClipToBounds="True"
+                      UseLayoutRounding="True"
+                      SnapsToDevicePixels="True"
+                      Visibility="Collapsed">
+                    <ItemsControl x:Name="MainSpectrumBars"
+                                  Height="16"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Top"
+                                  UseLayoutRounding="True"
+                                  SnapsToDevicePixels="True">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"
+                                            UseLayoutRounding="True"
+                                            SnapsToDevicePixels="True"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </Grid>
+                <Grid Margin="9,5"
+                      Panel.ZIndex="1">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
@@ -1283,7 +1328,7 @@
                                 <Image Source="Assets/Nte/列表.png" Width="18" Height="18"/>
                             </Button>
 
-                            <!-- 标题 + 频谱 -->
+                            <!-- 标题 -->
                             <StackPanel Grid.Column="2"
                                         x:Name="NteTitleStack"
                                         Margin="6,0,6,0"

@@ -85,6 +85,8 @@ public partial class MainWindow : Window
                 _widgetOpacity = preferences.Opacity;
             }
 
+            _mainSpectrumEnabled = preferences.MainSpectrumEnabled;
+            _mainSpectrumPosition = ParseMainSpectrumPosition(preferences.MainSpectrumPosition);
             _useGradientBackground = preferences.UseGradientBackground;
             _gradientBackgroundMode = ParseGradientBackgroundMode(preferences.GradientBackgroundMode);
         }
@@ -109,6 +111,8 @@ public partial class MainWindow : Window
                 ProgressBarDisplayMode = _progressBarDisplayMode.ToString(),
                 CornerRadius = _widgetCornerRadius,
                 Opacity = _widgetOpacity,
+                MainSpectrumEnabled = _mainSpectrumEnabled,
+                MainSpectrumPosition = _mainSpectrumPosition.ToString(),
                 UseGradientBackground = _useGradientBackground,
                 GradientBackgroundMode = _gradientBackgroundMode.ToString()
             };
@@ -131,6 +135,13 @@ public partial class MainWindow : Window
         return Enum.TryParse<GradientBackgroundMode>(rawValue, ignoreCase: true, out var mode)
             ? mode
             : GradientBackgroundMode.Linear;
+    }
+
+    private static MainSpectrumPosition ParseMainSpectrumPosition(string? rawValue)
+    {
+        return Enum.TryParse<MainSpectrumPosition>(rawValue, ignoreCase: true, out var position)
+            ? position
+            : MainSpectrumPosition.Top;
     }
 
     private string GetWidgetPreferencesPath()

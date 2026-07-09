@@ -100,7 +100,6 @@ C:\Users\liyueovo\Desktop\MusicBar\app\obj\Debug\net8.0-windows10.0.19041.0\Main
 C:\Users\liyueovo\Desktop\MusicBar\app\obj\Debug\net8.0-windows10.0.19041.0\App.g.cs
 C:\Users\liyueovo\Desktop\MusicBar\app\obj\Debug\net8.0-windows10.0.19041.0\MusicBar_MarkupCompile.cache
 C:\Users\liyueovo\Desktop\MusicBar\app\obj\Debug\net8.0-windows10.0.19041.0\MusicBar_MarkupCompile.lref
-C:\Users\liyueovo\Desktop\MusicBar\app\obj\Debug\net8.0-windows10.0.19041.0\App.baml
 C:\Users\liyueovo\Desktop\MusicBar\app\obj\Debug\net8.0-windows10.0.19041.0\MusicBar.g.resources
 C:\Users\liyueovo\Desktop\MusicBar\app\obj\Debug\net8.0-windows10.0.19041.0\MusicBar.GeneratedMSBuildEditorConfig.editorconfig
 C:\Users\liyueovo\Desktop\MusicBar\app\obj\Debug\net8.0-windows10.0.19041.0\MusicBar.AssemblyInfoInputs.cache
@@ -120,3 +119,15 @@ C:\Users\liyueovo\Desktop\MusicBar\verify-app-bin\MusicBar.deps.json
 C:\Users\liyueovo\Desktop\MusicBar\verify-app-bin\MusicBar.runtimeconfig.json
 C:\Users\liyueovo\Desktop\MusicBar\verify-app-bin\MusicBar.dll
 C:\Users\liyueovo\Desktop\MusicBar\verify-app-bin\MusicBar.pdb
+C:\Users\liyueovo\Desktop\MusicBar\app\obj\Debug\net8.0-windows10.0.19041.0\MusicBar.sourcelink.json
+C:\Users\liyueovo\Desktop\MusicBar\artifacts\test-bin\Debug\net8.0-windows10.0.19041.0\MusicBar.exe
+C:\Users\liyueovo\Desktop\MusicBar\artifacts\test-bin\Debug\net8.0-windows10.0.19041.0\MusicBar.deps.json
+C:\Users\liyueovo\Desktop\MusicBar\artifacts\test-bin\Debug\net8.0-windows10.0.19041.0\MusicBar.runtimeconfig.json
+C:\Users\liyueovo\Desktop\MusicBar\artifacts\test-bin\Debug\net8.0-windows10.0.19041.0\MusicBar.dll
+C:\Users\liyueovo\Desktop\MusicBar\artifacts\test-bin\Debug\net8.0-windows10.0.19041.0\MusicBar.pdb
+C:\Users\liyueovo\Desktop\MusicBar\artifacts\build-bin\Debug\net8.0-windows10.0.19041.0\MusicBar.exe
+C:\Users\liyueovo\Desktop\MusicBar\artifacts\build-bin\Debug\net8.0-windows10.0.19041.0\MusicBar.deps.json
+C:\Users\liyueovo\Desktop\MusicBar\artifacts\build-bin\Debug\net8.0-windows10.0.19041.0\MusicBar.runtimeconfig.json
+C:\Users\liyueovo\Desktop\MusicBar\artifacts\build-bin\Debug\net8.0-windows10.0.19041.0\MusicBar.dll
+C:\Users\liyueovo\Desktop\MusicBar\artifacts\build-bin\Debug\net8.0-windows10.0.19041.0\MusicBar.pdb
+C:\Users\liyueovo\Desktop\MusicBar\app\obj\Debug\net8.0-windows10.0.19041.0\App.baml

@@ -33,6 +33,7 @@ public partial class MainWindow : Window
     {
         PlayIconViewbox.Visibility = isPlaying ? Visibility.Collapsed : Visibility.Visible;
         PauseIconViewbox.Visibility = isPlaying ? Visibility.Visible : Visibility.Collapsed;
+        SetMainSpectrumPlaybackState(isPlaying);
     }
 
     private void UpdateActivePlayerLogo()
@@ -780,11 +781,13 @@ public partial class MainWindow : Window
         _isNteMode = false;
         NteCloseCoverWindow();
         ApplyNteExpandedLayout(false);
+        Height = _isDocked ? DockedHeight : DefaultFreeHeight;
         SystemPlayerPage.Visibility = Visibility.Visible;
         NtePlayerPage.Visibility = Visibility.Collapsed;
 
         _widgetBackgroundBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
         WidgetBackgroundHost.Background = _widgetBackgroundBrush;
+        UpdateMainSpectrumPopupVisibility();
 
         Dispatcher.InvokeAsync(() =>
         {
@@ -809,6 +812,7 @@ public partial class MainWindow : Window
         WidgetBorder.Opacity = 1d;
         SystemPlayerPage.Visibility = Visibility.Collapsed;
         NtePlayerPage.Visibility = Visibility.Visible;
+        UpdateMainSpectrumPopupVisibility();
 
         _widgetBackgroundBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
         ApplyNteModeBackground();
@@ -821,6 +825,7 @@ public partial class MainWindow : Window
 
         ClearLyricState();
         ResetPlaybackProgressUi();
+        ApplyNteExpandedLayout(false);
         ApplyNteDockedContentLayout();
         InitializeNtePlayer();
     }

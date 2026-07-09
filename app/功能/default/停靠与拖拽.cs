@@ -252,7 +252,12 @@ public partial class MainWindow : Window
         _isDocked = false;
         _currentDockedStyle = DockedStyle.Normal;
         Width = DefaultFreeWidth;
-        Height = DefaultFreeHeight;
+        Height = _isNteMode
+            ? NtePlayerLayoutState.Compute(
+                NtePlaylistGrid?.Visibility == Visibility.Visible,
+                _nteDetachedLayoutEnabled,
+                docked: false).WindowHeight
+            : DefaultFreeHeight;
         _freeLeft = Left;
         _freeTop = Top;
         ApplyDockedVisualState();
@@ -365,6 +370,7 @@ public partial class MainWindow : Window
 
         UpdateProgressBrushResources();
         ApplyDockedContentLayout();
+        UpdateMainSpectrumPopupVisibility();
     }
 
     private void ApplyDockedContentLayout()
