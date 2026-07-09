@@ -1,0 +1,15 @@
+<Application x:Class="MusicBar.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:MusicBar"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <FontFamily x:Key="AppFontFamily">pack://application:,,,/Assets/Fonts/misans.ttf#MiSans</FontFamily>
+        <Style TargetType="{x:Type Control}">
+            <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}"/>
+        </Style>
+        <Style TargetType="{x:Type TextBlock}">
+            <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}"/>
+        </Style>
+    </Application.Resources>
+</Application>

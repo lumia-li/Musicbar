@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "dgSpecHash": "DIRfEb+FcP8=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\liyueovo\\Desktop\\MusicBar\\app\\MusicBar.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\liyueovo\\.nuget\\packages\\naudio\\2.3.0\\naudio.2.3.0.nupkg.sha512",
+    "C:\\Users\\liyueovo\\.nuget\\packages\\naudio.asio\\2.3.0\\naudio.asio.2.3.0.nupkg.sha512",
+    "C:\\Users\\liyueovo\\.nuget\\packages\\naudio.core\\2.3.0\\naudio.core.2.3.0.nupkg.sha512",
+    "C:\\Users\\liyueovo\\.nuget\\packages\\naudio.midi\\2.3.0\\naudio.midi.2.3.0.nupkg.sha512",
+    "C:\\Users\\liyueovo\\.nuget\\packages\\naudio.wasapi\\2.3.0\\naudio.wasapi.2.3.0.nupkg.sha512",
+    "C:\\Users\\liyueovo\\.nuget\\packages\\naudio.winforms\\2.3.0\\naudio.winforms.2.3.0.nupkg.sha512",
+    "C:\\Users\\liyueovo\\.nuget\\packages\\naudio.winmm\\2.3.0\\naudio.winmm.2.3.0.nupkg.sha512",
+    "C:\\Users\\liyueovo\\.nuget\\packages\\taglibsharp\\2.3.0\\taglibsharp.2.3.0.nupkg.sha512",
+    "C:\\Users\\liyueovo\\.nuget\\packages\\microsoft.windows.sdk.net.ref\\10.0.19041.56\\microsoft.windows.sdk.net.ref.10.0.19041.56.nupkg.sha512"
+  ],
+  "logs": []
+}
