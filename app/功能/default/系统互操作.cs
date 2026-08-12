@@ -87,12 +87,25 @@ public partial class MainWindow : Window
         uint idThread,
         uint dwFlags);
 
-    [DllImport("user32.dll")]
+    [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool UnhookWinEvent(IntPtr hWinEventHook);
 
     [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AllowSetForegroundWindow(uint dwProcessId);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool LockSetForegroundWindow(uint uLockCode);
+
+    private const uint ASFW_ANY = 0xFFFFFFFFu;
+
+    [DllImport("user32.dll")]
     private static extern bool GetCursorPos(out POINT lpPoint);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr WindowFromPoint(POINT point);
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);

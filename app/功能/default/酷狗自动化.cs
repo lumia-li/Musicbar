@@ -792,16 +792,33 @@ public partial class MainWindow : Window
             _ = SetWindowPos(selfHwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
         }
 
+        // 解除可能由 Windows 强加的前台窗口锁定，避免汽水音乐/SodaMusic
+        // 拒绝让出前台时引发的进程级死锁。
+        _ = LockSetForegroundWindow(2 /* LSFW_UNLOCK */);
+
+        // 让目标进程授权我们把它的窗口切到前台。仅当调用进程本身是前台进程时
+        // SetForegroundWindow 才能成功；显式请求授权是 Windows 推荐做法。
+        if (GetWindowThreadProcessId(targetWindow, out var targetProcessId) != 0
+            && targetProcessId != 0)
+        {
+            _ = AllowSetForegroundWindow(targetProcessId);
+        }
+
         _ = ShowWindowAsync(targetWindow, SW_RESTORE);
-        _ = SetForegroundWindow(targetWindow);
+        var activated = SetForegroundWindow(targetWindow);
         await Task.Delay(60);
 
         if (!await WaitForForegroundWindowAsync(targetWindow, 320))
         {
-            EnsureTopmost();
+            // 切换失败时不要立即强制 EnsureTopmost，否则会和汽水音乐形成
+            // Z 序抢占的循环，从而导致汽水音乐主窗口的 UI 线程被卡死。
+            // 让本进程不抢占前台，让用户先操作汽水音乐。
+            _suspendTopmostGuardUntilUtc = DateTime.UtcNow.AddMilliseconds(3000);
             return false;
         }
 
+        // 切换成功时把前台窗口的临时锁释放掉，避免影响后续其他切换。
+        _ = LockSetForegroundWindow(2 /* LSFW_UNLOCK */);
         return true;
     }
 

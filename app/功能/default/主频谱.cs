@@ -56,8 +56,6 @@ public partial class MainWindow : Window
 
         var state = MainSpectrumPopupState.Compute(
             _mainSpectrumEnabled,
-            _isNteMode,
-            _isDocked,
             _mainSpectrumIsPlaying,
             HasVisibleMainSpectrumEnergy());
         MainSpectrumHost.Visibility = state.Visible ? Visibility.Visible : Visibility.Collapsed;
@@ -163,11 +161,20 @@ public partial class MainWindow : Window
         }
     }
 
-    private void MainSpectrumCapture_RecordingStopped(object? sender, StoppedEventArgs e)
+    private async void MainSpectrumCapture_RecordingStopped(object? sender, StoppedEventArgs e)
     {
-        if (_mainSpectrumCapture != null)
+        StopMainSpectrumCapture();
+
+        if (_mainSpectrumIsPlaying)
         {
-            StopMainSpectrumCapture();
+            await Task.Delay(1500);
+            await Dispatcher.InvokeAsync(() =>
+            {
+                if (_mainSpectrumIsPlaying && _mainSpectrumCapture == null)
+                {
+                    StartMainSpectrumCapture();
+                }
+            });
         }
     }
 
@@ -281,20 +288,23 @@ public partial class MainWindow : Window
             return MainSpectrumVisual.ColorFromBackground(_rawGradientBackgroundColors[0]);
         }
 
-        var background = WidgetBackgroundHost.Background switch
-        {
-            SolidColorBrush brush => brush.Color,
-            _ => _contentBackgroundColor
-        };
+        // 停靠时使用内容背景色，避免悬停丙烯酸效果干扰频谱颜色
+        var background = _isDocked
+            ? _contentBackgroundColor
+            : WidgetBackgroundHost.Background switch
+            {
+                SolidColorBrush brush => brush.Color,
+                _ => _contentBackgroundColor
+            };
         return MainSpectrumVisual.ColorFromBackground(background);
     }
 }
 
 internal readonly record struct MainSpectrumPopupState(bool Visible)
 {
-    public static MainSpectrumPopupState Compute(bool enabled, bool isNteMode, bool isDocked, bool isPlaying, bool hasVisibleEnergy)
+    public static MainSpectrumPopupState Compute(bool enabled, bool isPlaying, bool hasVisibleEnergy)
     {
-        return new MainSpectrumPopupState(enabled && !isNteMode && (isPlaying || hasVisibleEnergy));
+        return new MainSpectrumPopupState(enabled && (isPlaying || hasVisibleEnergy));
     }
 }
 

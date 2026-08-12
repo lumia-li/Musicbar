@@ -49,7 +49,6 @@ public partial class MainWindow : Window
 
         if (PlayerPickerPopup.IsOpen
             && !IsPointInsideElement(PlayerPickerPanel, source)
-            && !IsPointInsideElement(NteLogoSelectorPanel, source)
             && !IsPointInsideElement(SourcePickerToggleButton, source))
         {
             CollapsePlayerPickerOverlay();
@@ -74,6 +73,10 @@ public partial class MainWindow : Window
 
         _isPointerDown = true;
         _dragStartScreen = PointToScreen(e.GetPosition(this));
+        if (sender is UIElement dragSurface && dragSurface.CaptureMouse())
+        {
+            _dragCaptureElement = dragSurface;
+        }
         e.Handled = true;
     }
 
@@ -98,6 +101,7 @@ public partial class MainWindow : Window
         {
             // MouseUp may happen outside our window; clear stale drag intent.
             _isPointerDown = false;
+            ReleasePendingDragCapture();
             return;
         }
 
@@ -115,6 +119,7 @@ public partial class MainWindow : Window
     private void Root_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         _isPointerDown = false;
+        ReleasePendingDragCapture();
 
         if (!_isDragging)
         {
@@ -135,6 +140,7 @@ public partial class MainWindow : Window
         _isPointerDown = false;
         _isDragging = true;
         _wasDockedBeforeDrag = _isDocked;
+        ReleasePendingDragCapture();
 
         if (_isDocked)
         {
@@ -158,6 +164,7 @@ public partial class MainWindow : Window
 
     private void EndDragging()
     {
+        ReleasePendingDragCapture();
         _isDragging = false;
 
         var rect = new Rect(Left, Top, Width, Height);
@@ -184,6 +191,7 @@ public partial class MainWindow : Window
 
     private void CancelDragging()
     {
+        ReleasePendingDragCapture();
         _isDragging = false;
 
         if (_wasDockedBeforeDrag)
@@ -199,6 +207,16 @@ public partial class MainWindow : Window
         }
 
         EnsureVisibleOnAnyScreen();
+    }
+
+    private void ReleasePendingDragCapture()
+    {
+        if (_dragCaptureElement?.IsMouseCaptured == true)
+        {
+            _dragCaptureElement.ReleaseMouseCapture();
+        }
+
+        _dragCaptureElement = null;
     }
 
     private void DockToTaskbarByPreference()
@@ -227,24 +245,15 @@ public partial class MainWindow : Window
             return;
         }
 
-        var nteExpandedDocked = _isNteMode && NtePlaylistGrid?.Visibility == Visibility.Visible;
-        var expectedHeight = nteExpandedDocked ? NteExpandedHeight : DockedHeight;
-        var expectedTop = nteExpandedDocked ? target.TargetBounds.Bottom - expectedHeight : target.TargetBounds.Top;
-
         if (Math.Abs(Left - target.TargetBounds.Left) <= 1d &&
-            Math.Abs(Top - expectedTop) <= 1d &&
+            Math.Abs(Top - target.TargetBounds.Top) <= 1d &&
             Math.Abs(Width - target.TargetBounds.Width) <= 1d &&
-            Math.Abs(Height - expectedHeight) <= 1d)
+            Math.Abs(Height - DockedHeight) <= 1d)
         {
             return;
         }
 
         ApplyDockedTarget(target with { Distance = 0d, IsConfirm = true }, updatePreferredSide: false);
-        if (nteExpandedDocked)
-        {
-            Height = NteExpandedHeight;
-            Top = target.TargetBounds.Bottom - Height;
-        }
     }
 
     private void SnapToFreeAtCurrentPosition()
@@ -252,12 +261,7 @@ public partial class MainWindow : Window
         _isDocked = false;
         _currentDockedStyle = DockedStyle.Normal;
         Width = DefaultFreeWidth;
-        Height = _isNteMode
-            ? NtePlayerLayoutState.Compute(
-                NtePlaylistGrid?.Visibility == Visibility.Visible,
-                _nteDetachedLayoutEnabled,
-                docked: false).WindowHeight
-            : DefaultFreeHeight;
+        Height = DefaultFreeHeight;
         _freeLeft = Left;
         _freeTop = Top;
         ApplyDockedVisualState();
@@ -338,37 +342,34 @@ public partial class MainWindow : Window
         EnsureVisibleOnAnyScreen();
     }
 
-    private void ApplyDockedVisualState()
+    private void ApplyDockedVisualState(bool animateThemeTransition = false)
     {
         WidgetBorder.BorderThickness = new Thickness(0);
         WidgetBorder.BorderBrush = Brushes.Transparent;
         WidgetBackgroundHost.Margin = new Thickness(0);
         WidgetBackgroundHost.CornerRadius = new CornerRadius(_widgetCornerRadius);
 
-        if (_isDocked)
-        {
-            PlayerPickerPanel.Background = new SolidColorBrush(PlayerPickerPanelDockedBackgroundColor);
-            PlayerPickerPanel.BorderBrush = Brushes.Transparent;
-            PlayerPickerPanel.BorderThickness = new Thickness(0);
+        PlayerPickerPanel.BorderBrush = Brushes.Transparent;
+        PlayerPickerPanel.BorderThickness = new Thickness(0);
 
-            UpdateBrushResource("ContextMenuBackgroundBrush", DockedContextMenuBackgroundColor);
-            UpdateBrushResource("ContextMenuBorderBrush", Colors.Transparent);
-            UpdateBrushResource("ContextMenuTextBrush", DockedContextMenuTextColor);
-            UpdateBrushResource("ContextMenuHoverBrush", DockedContextMenuHoverColor);
-        }
-        else
-        {
-            PlayerPickerPanel.Background = new SolidColorBrush(PlayerPickerPanelDefaultBackgroundColor);
-            PlayerPickerPanel.BorderBrush = Brushes.Transparent;
-            PlayerPickerPanel.BorderThickness = new Thickness(0);
+        UpdateBrushResource(
+            "ContextMenuBackgroundBrush",
+            _isDarkTheme ? DarkContextMenuBackgroundColor : LightContextMenuBackgroundColor,
+            animateThemeTransition);
+        UpdateBrushResource(
+            "ContextMenuBorderBrush",
+            _isDarkTheme ? DarkContextMenuBorderColor : LightContextMenuBorderColor,
+            animateThemeTransition);
+        UpdateBrushResource(
+            "ContextMenuTextBrush",
+            _isDarkTheme ? DarkContextMenuTextColor : LightContextMenuTextColor,
+            animateThemeTransition);
+        UpdateBrushResource(
+            "ContextMenuHoverBrush",
+            _isDarkTheme ? DarkContextMenuHoverColor : LightContextMenuHoverColor,
+            animateThemeTransition);
 
-            UpdateBrushResource("ContextMenuBackgroundBrush", _isDarkTheme ? DarkContextMenuBackgroundColor : LightContextMenuBackgroundColor);
-            UpdateBrushResource("ContextMenuBorderBrush", _isDarkTheme ? DarkContextMenuBorderColor : LightContextMenuBorderColor);
-            UpdateBrushResource("ContextMenuTextBrush", _isDarkTheme ? DarkContextMenuTextColor : LightContextMenuTextColor);
-            UpdateBrushResource("ContextMenuHoverBrush", _isDarkTheme ? DarkContextMenuHoverColor : LightContextMenuHoverColor);
-        }
-
-        UpdateProgressBrushResources();
+        UpdateProgressBrushResources(animateThemeTransition);
         ApplyDockedContentLayout();
         UpdateMainSpectrumPopupVisibility();
     }
@@ -395,40 +396,7 @@ public partial class MainWindow : Window
         NextButton.Visibility = transportVisibility;
         DefaultPlaybackModeButton.Visibility = transportVisibility;
 
-        ApplyNteDockedContentLayout();
-
         RefreshActivePlayerLogoLayout();
-    }
-
-    private void ApplyNteDockedContentLayout()
-    {
-        if (NtePlayerPage == null || NteStatusBar == null)
-        {
-            return;
-        }
-
-        var nteExpandedDocked = _isDocked && NtePlaylistGrid?.Visibility == Visibility.Visible;
-        ApplyNtePlaylistDirection(nteExpandedDocked);
-        ApplyNteDetachedLayoutVisuals(NtePlayerLayoutState.Compute(
-            NtePlaylistGrid?.Visibility == Visibility.Visible,
-            _nteDetachedLayoutEnabled,
-            _isDocked), animate: false);
-        NtePlayerPage.Margin = _isDocked && !nteExpandedDocked ? new Thickness(9, 2, 9, 2) : new Thickness(9, 5, 9, 5);
-        NteStatusBar.Visibility = NtePlayerLayoutState.Compute(
-            NtePlaylistGrid?.Visibility == Visibility.Visible,
-            _nteDetachedLayoutEnabled,
-            _isDocked).StatusVisible ? Visibility.Visible : Visibility.Collapsed;
-
-        var narrowDocked = _isDocked && Width <= CompactNanoDockedWidth + 2d;
-        var compactVisibility = narrowDocked ? Visibility.Collapsed : Visibility.Visible;
-        NteTitleStack.Visibility = compactVisibility;
-        NteImportFilesButton.Visibility = compactVisibility;
-        NtePrevButton.Visibility = compactVisibility;
-        NteNextButton.Visibility = compactVisibility;
-        NteModeButton.Visibility = compactVisibility;
-        NteFavoriteFilterButton.Visibility = compactVisibility;
-        NteLikeCurrentButton.Visibility = compactVisibility;
-        NtePlayButton.Visibility = Visibility.Visible;
     }
 
     private bool IsCompactNanoDockedLayout()
@@ -853,11 +821,13 @@ public partial class MainWindow : Window
         return _isDocked ? DockedInteractiveTransparentColor : _previewBackgroundColor;
     }
 
-    private void ApplyWidgetBackground(Color toColor)
+    private void ApplyWidgetBackground(Color toColor, bool animateTransition = false)
     {
-        if (_isNteMode)
+        // 停靠模式下悬停时，亚克力效果处于激活状态，
+        // 拒绝被周期性定时器（VisibilityGuardTimer）等路径重置为停靠透明色，
+        // 防止鼠标悬停一会后背景自动消失。
+        if (_isDocked && _isHovering && toColor == DockedInteractiveTransparentColor)
         {
-            ApplyNteModeBackground();
             return;
         }
 
@@ -870,7 +840,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        AnimateWidgetBackground(toColor);
+        AnimateWidgetBackground(toColor, animateTransition);
     }
 
     private Brush CreateAlbumGradientBrush()
@@ -1009,7 +979,7 @@ public partial class MainWindow : Window
             (byte)(from.B + (to.B - from.B) * progress));
     }
 
-    private void AnimateWidgetBackground(Color toColor)
+    private void AnimateWidgetBackground(Color toColor, bool animateTransition)
     {
         if (!ReferenceEquals(WidgetBackgroundHost.Background, _widgetBackgroundBrush))
         {
@@ -1022,12 +992,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        _widgetBackgroundBrush.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation
-        {
-            To = toColor,
-            Duration = TimeSpan.FromMilliseconds(120),
-            FillBehavior = FillBehavior.HoldEnd
-        });
+        SetBrushColor(_widgetBackgroundBrush, toColor, animateTransition);
     }
 
     private void PlayerPickerPopup_Opened(object sender, EventArgs e)

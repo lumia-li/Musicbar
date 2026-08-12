@@ -6,18 +6,19 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <Copyright>Copyright © 2026 liyue</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
     <Resource Include="Assets\AppIcon\*.png" />
     <Resource Include="Assets\Logos\*.png" />
-    <Resource Include="Assets\Nte\*.png" />
+    <Resource Include="Assets\Playback\*.png" />
+    <Resource Include="Assets\TrayIcon\tray.png" />
     <Resource Include="Assets\Fonts\*.ttf" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="NAudio" Version="2.3.0" />
-    <PackageReference Include="TagLibSharp" Version="2.3.0" />
   </ItemGroup>
 
 </Project>

@@ -656,7 +656,7 @@ public partial class MainWindow : Window
     private static BitmapImage? LoadDefaultPlaybackModeIcon(DefaultPlaybackMode mode)
     {
         var assetName = DefaultPlaybackModeResolver.GetIconAssetName(mode);
-        var uri = new Uri($"pack://application:,,,/Assets/Nte/{assetName}", UriKind.Absolute);
+        var uri = new Uri($"pack://application:,,,/Assets/Playback/{assetName}", UriKind.Absolute);
         if (Application.GetResourceStream(uri) is null)
         {
             return null;
@@ -760,82 +760,6 @@ public partial class MainWindow : Window
     private async void PlayerTargetSodaButton_Click(object sender, RoutedEventArgs e)
     {
         await SelectPlayerControlTargetAsync(PlayerControlTarget.SodaMusic);
-    }
-
-    private void NteLogoSelectorPanel_Click(object sender, RoutedEventArgs e)
-    {
-        e.Handled = true;
-        CollapsePlayerPickerOverlay();
-        EnterNteMode();
-    }
-
-    private static readonly Color NteModeBackgroundColor = Color.FromRgb(0x1F, 0x20, 0x26);
-
-    private void NteBackButton_Click(object sender, RoutedEventArgs e)
-    {
-        ExitNteMode();
-    }
-
-    private void ExitNteMode()
-    {
-        _isNteMode = false;
-        NteCloseCoverWindow();
-        ApplyNteExpandedLayout(false);
-        Height = _isDocked ? DockedHeight : DefaultFreeHeight;
-        SystemPlayerPage.Visibility = Visibility.Visible;
-        NtePlayerPage.Visibility = Visibility.Collapsed;
-
-        _widgetBackgroundBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
-        WidgetBackgroundHost.Background = _widgetBackgroundBrush;
-        UpdateMainSpectrumPopupVisibility();
-
-        Dispatcher.InvokeAsync(() =>
-        {
-            var targetColor = _isDocked
-                ? DockedInteractiveTransparentColor
-                : GetEffectiveBaseBackgroundColor();
-
-            _widgetBackgroundBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
-            _widgetBackgroundBrush.Color = targetColor;
-
-            if (!_isDocked && _currentPreview is null)
-            {
-                ApplyWidgetBackground(GetEffectiveBaseBackgroundColor());
-            }
-        }, DispatcherPriority.Render);
-    }
-
-    private void EnterNteMode()
-    {
-        _isNteMode = true;
-        WidgetBorder.BeginAnimation(OpacityProperty, null);
-        WidgetBorder.Opacity = 1d;
-        SystemPlayerPage.Visibility = Visibility.Collapsed;
-        NtePlayerPage.Visibility = Visibility.Visible;
-        UpdateMainSpectrumPopupVisibility();
-
-        _widgetBackgroundBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
-        ApplyNteModeBackground();
-
-        Dispatcher.InvokeAsync(() =>
-        {
-            _widgetBackgroundBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
-            ApplyNteModeBackground();
-        }, DispatcherPriority.Render);
-
-        ClearLyricState();
-        ResetPlaybackProgressUi();
-        ApplyNteExpandedLayout(false);
-        ApplyNteDockedContentLayout();
-        InitializeNtePlayer();
-    }
-
-    private void ApplyNteModeBackground()
-    {
-        var color = ApplyWidgetOpacityToColor(NteModeBackgroundColor);
-        _widgetBackgroundBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
-        _widgetBackgroundBrush.Color = color;
-        WidgetBackgroundHost.Background = _widgetBackgroundBrush;
     }
 
     private async Task<GlobalSystemMediaTransportControlsSession?> ResolveTargetSessionAsync(GlobalSystemMediaTransportControlsSessionManager sessionManager, bool forceRebind)
@@ -995,20 +919,31 @@ public partial class MainWindow : Window
 
         try
         {
-            var timeline = session.GetTimelineProperties();
-            var rawDurationMs = GetRawTimelineDurationMs(timeline);
-            if (rawDurationMs > 1000d)
+            // GetTimelineProperties 同样是同步 COM 调用。汽水音乐/SodaMusic
+            // 进程未响应时会挂起；后台线程 + 50ms 超时，避免 ResolveTargetSessionAsync
+            // 整体卡死。
+            var timelineTask = Task.Run(() => session.GetTimelineProperties());
+            if (!timelineTask.Wait(TimeSpan.FromMilliseconds(50)))
             {
-                score += 18;
+                score -= 6;
             }
             else
             {
-                score -= 10;
-            }
+                var timeline = timelineTask.Result;
+                var rawDurationMs = GetRawTimelineDurationMs(timeline);
+                if (rawDurationMs > 1000d)
+                {
+                    score += 18;
+                }
+                else
+                {
+                    score -= 10;
+                }
 
-            if (timeline.LastUpdatedTime != default)
-            {
-                score += 2;
+                if (timeline.LastUpdatedTime != default)
+                {
+                    score += 2;
+                }
             }
         }
         catch
@@ -1050,9 +985,17 @@ public partial class MainWindow : Window
 
     private static bool IsPlayingSession(GlobalSystemMediaTransportControlsSession session)
     {
+        // GSMTC 的 GetPlaybackInfo 是同步 COM 调用，汽水音乐/SodaMusic
+        // 进程未响应时可能挂起。把它放到后台线程并加 50ms 超时，避免
+        // ScoreSessionAsync 等调用阻塞 UI 线程。
         try
         {
-            return session.GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
+            var task = Task.Run(() => session.GetPlaybackInfo().PlaybackStatus);
+            if (!task.Wait(TimeSpan.FromMilliseconds(50)))
+            {
+                return false;
+            }
+            return task.Result == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
         }
         catch
         {

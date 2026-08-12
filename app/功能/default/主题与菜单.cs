@@ -28,7 +28,9 @@ namespace MusicBar;
 
 public partial class MainWindow : Window
 {
-    private void UpdateProgressBrushResources()
+    private static readonly TimeSpan ThemeTransitionDuration = TimeSpan.FromMilliseconds(260);
+
+    private void UpdateProgressBrushResources(bool animateTransition = false)
     {
         var progressTrackColor = _isDocked
             ? Color.FromArgb(0x38, DockedContextMenuTextColor.R, DockedContextMenuTextColor.G, DockedContextMenuTextColor.B)
@@ -40,12 +42,12 @@ public partial class MainWindow : Window
             ? DockedContextMenuBackgroundColor
             : _isDarkTheme ? DarkFloatingProgressBackgroundColor : LightFloatingProgressBackgroundColor;
 
-        UpdateBrushResource("ProgressTrackBrush", progressTrackColor);
-        UpdateBrushResource("ProgressFillBrush", progressFillColor);
-        UpdateBrushResource("FloatingProgressBackgroundBrush", floatingBackgroundColor);
+        UpdateBrushResource("ProgressTrackBrush", progressTrackColor, animateTransition);
+        UpdateBrushResource("ProgressFillBrush", progressFillColor, animateTransition);
+        UpdateBrushResource("FloatingProgressBackgroundBrush", floatingBackgroundColor, animateTransition);
     }
 
-    private void ApplyTheme(bool isDarkTheme, bool force = false)
+    private void ApplyTheme(bool isDarkTheme, bool force = false, bool animateTransition = false)
     {
         if (!force && _isDarkTheme == isDarkTheme)
         {
@@ -62,34 +64,30 @@ public partial class MainWindow : Window
         _previewBackgroundColor = ApplyWidgetOpacityToColor(isDarkTheme ? DarkPreviewColor : LightPreviewColor);
         UpdateAlbumArtBackgroundColor(AlbumArtImage.Source as BitmapImage);
 
-        UpdateBrushResource("WidgetBorderBrush", isDarkTheme ? DarkBorderColor : LightBorderColor);
-        UpdateBrushResource("AlbumPlaceholderBrush", isDarkTheme ? DarkAlbumPlaceholderColor : LightAlbumPlaceholderColor);
-        UpdateBrushResource("PrimaryTextBrush", isDarkTheme ? DarkPrimaryTextColor : LightPrimaryTextColor);
-        UpdateBrushResource("SecondaryTextBrush", isDarkTheme ? DarkSecondaryTextColor : LightSecondaryTextColor);
-        UpdateBrushResource("IconBrush", isDarkTheme ? DarkIconColor : LightIconColor);
-        UpdateBrushResource("ButtonHoverBrush", isDarkTheme ? DarkButtonHoverColor : LightButtonHoverColor);
-        UpdateBrushResource("ButtonPressedBrush", isDarkTheme ? DarkButtonPressedColor : LightButtonPressedColor);
-        UpdateBrushResource("LikeActiveBrush", isDarkTheme ? DarkLikeActiveColor : LightLikeActiveColor);
-        UpdateBrushResource("LikeUnavailableBrush", isDarkTheme ? DarkLikeUnavailableColor : LightLikeUnavailableColor);
-        UpdateBrushResource("ContextMenuBackgroundBrush", isDarkTheme ? DarkContextMenuBackgroundColor : LightContextMenuBackgroundColor);
-        UpdateBrushResource("ContextMenuBorderBrush", isDarkTheme ? DarkContextMenuBorderColor : LightContextMenuBorderColor);
-        UpdateBrushResource("ContextMenuTextBrush", isDarkTheme ? DarkContextMenuTextColor : LightContextMenuTextColor);
-        UpdateBrushResource("ContextMenuHoverBrush", isDarkTheme ? DarkContextMenuHoverColor : LightContextMenuHoverColor);
-        UpdateProgressBrushResources();
+        UpdateBrushResource("WidgetBorderBrush", isDarkTheme ? DarkBorderColor : LightBorderColor, animateTransition);
+        UpdateBrushResource("AlbumPlaceholderBrush", isDarkTheme ? DarkAlbumPlaceholderColor : LightAlbumPlaceholderColor, animateTransition);
+        UpdateBrushResource("PrimaryTextBrush", isDarkTheme ? DarkPrimaryTextColor : LightPrimaryTextColor, animateTransition);
+        UpdateBrushResource("SecondaryTextBrush", isDarkTheme ? DarkSecondaryTextColor : LightSecondaryTextColor, animateTransition);
+        UpdateBrushResource("IconBrush", isDarkTheme ? DarkIconColor : LightIconColor, animateTransition);
+        UpdateBrushResource("ButtonHoverBrush", isDarkTheme ? DarkButtonHoverColor : LightButtonHoverColor, animateTransition);
+        UpdateBrushResource("ButtonPressedBrush", isDarkTheme ? DarkButtonPressedColor : LightButtonPressedColor, animateTransition);
+        UpdateBrushResource("LikeActiveBrush", isDarkTheme ? DarkLikeActiveColor : LightLikeActiveColor, animateTransition);
+        UpdateBrushResource("LikeUnavailableBrush", isDarkTheme ? DarkLikeUnavailableColor : LightLikeUnavailableColor, animateTransition);
 
         if (_currentPreview is not null)
         {
-            ApplyWidgetBackground(GetEffectivePreviewBackgroundColor());
+            ApplyWidgetBackground(GetEffectivePreviewBackgroundColor(), animateTransition);
             WidgetBorder.Opacity = _currentPreview.IsConfirm ? 1d : 0.9d;
         }
         else
         {
-            ApplyWidgetBackground(GetEffectiveBaseBackgroundColor());
+            ApplyWidgetBackground(GetEffectiveBaseBackgroundColor(), animateTransition);
             WidgetBorder.Opacity = 1d;
         }
 
-        ApplyDockedVisualState();
+        ApplyDockedVisualState(animateTransition);
         ApplyLikeState();
+        UpdateThemeMenuItems();
     }
 
     private void CloseProgramMenuItem_Click(object sender, RoutedEventArgs e)
@@ -159,12 +157,6 @@ public partial class MainWindow : Window
             ? _baseBackgroundColor
             : _rawContentBackgroundColor);
         _previewBackgroundColor = ApplyWidgetOpacityToColor(_isDarkTheme ? DarkPreviewColor : LightPreviewColor);
-        if (_isNteMode)
-        {
-            ApplyNteModeBackground();
-            return;
-        }
-
         ApplyWidgetBackground(_currentPreview is not null
             ? GetEffectivePreviewBackgroundColor()
             : GetEffectiveBaseBackgroundColor());
@@ -177,6 +169,20 @@ public partial class MainWindow : Window
         ApplyWidgetBackground(_currentPreview is not null
             ? GetEffectivePreviewBackgroundColor()
             : GetEffectiveBaseBackgroundColor());
+    }
+
+    private void ThemeMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: string themeName })
+        {
+            return;
+        }
+
+        _useSystemTheme = false;
+        ApplyTheme(string.Equals(themeName, "Dark", StringComparison.Ordinal), animateTransition: true);
+        UpdateThemeMenuItems();
+        SaveWidgetPreferences();
+        e.Handled = true;
     }
 
     private void GradientLinearMenuItem_Click(object sender, RoutedEventArgs e)
@@ -210,6 +216,17 @@ public partial class MainWindow : Window
         GradientLinearMenuItem.IsChecked = _gradientBackgroundMode == GradientBackgroundMode.Linear;
         GradientRadialMenuItem.IsChecked = _gradientBackgroundMode == GradientBackgroundMode.Radial;
         GradientAngleMenuItem.IsChecked = _gradientBackgroundMode == GradientBackgroundMode.Angle;
+    }
+
+    private void UpdateThemeMenuItems()
+    {
+        if (LightThemeMenuItem is null || DarkThemeMenuItem is null)
+        {
+            return;
+        }
+
+        LightThemeMenuItem.IsChecked = !_isDarkTheme;
+        DarkThemeMenuItem.IsChecked = _isDarkTheme;
     }
 
     private void MainSpectrumEnabledMenuItem_Click(object sender, RoutedEventArgs e)
@@ -293,15 +310,24 @@ public partial class MainWindow : Window
         RefreshFloatingProgressPopupVisibility(_lastPlaybackProgressSnapshot is not null && _lastPlaybackProgressSnapshot.DurationMs > 1000d);
         EnsureTopmost();
 
+        // 打开时重新绑定动态资源，既避免 Popup 首帧闪色，也确保主题切换时
+        // 根菜单与子菜单使用同一份最新画刷。
+        if (sender is ContextMenu menu)
+        {
+            menu.SetResourceReference(Control.BackgroundProperty, "ContextMenuBackgroundBrush");
+            menu.SetResourceReference(Control.BorderBrushProperty, "ContextMenuBorderBrush");
+            menu.SetResourceReference(Control.ForegroundProperty, "ContextMenuTextBrush");
+        }
+
         CornerRadiusSlider.Value = _widgetCornerRadius;
         CornerRadiusResetButton.Content = ((int)_widgetCornerRadius).ToString();
         var opacityPercent = (int)Math.Round(_widgetOpacity * 100d);
         WidgetOpacitySlider.Value = opacityPercent;
         WidgetOpacityValueText.Text = opacityPercent.ToString(CultureInfo.InvariantCulture);
         UpdateGradientMenuItems();
+        UpdateThemeMenuItems();
         UpdateMainSpectrumMenuItem();
-        UpdateNteDetachedLayoutMenuItem();
-        UpdateNtePlaybackAdjustmentMenuItem();
+        PopulateSoundEffectMenu();
     }
 
     private void WidgetContextMenu_Closed(object sender, RoutedEventArgs e)
@@ -314,51 +340,174 @@ public partial class MainWindow : Window
         SaveWidgetPreferences();
     }
 
-    private void UpdateNteDetachedLayoutMenuItem()
+    // ── 氛围音效 ─────────────────────────────────────────────────────────
+
+    private void PopulateSoundEffectMenu()
     {
-        if (NteDetachedLayoutMenuItem == null)
-        {
+        if (SoundEffectEnabledMenuItem is null || SoundEffectSelectorMenuItem is null)
             return;
+
+        SoundEffectEnabledMenuItem.IsChecked = _soundEffectEnabled;
+
+        // 同步音量滑块
+        if (SoundEffectVolumeSlider != null)
+        {
+            var volPercent = (int)Math.Round(_soundEffectPlayer.Volume * 100d);
+            if (Math.Abs(SoundEffectVolumeSlider.Value - volPercent) > 0.5d)
+            {
+                SoundEffectVolumeSlider.Value = volPercent;
+            }
         }
 
-        var state = NteDetachedLayoutMenuState.Compute(_isNteMode, _nteDetachedLayoutEnabled);
-        NteDetachedLayoutMenuItem.Visibility = state.Visible ? Visibility.Visible : Visibility.Collapsed;
-        NteDetachedLayoutMenuItem.IsChecked = state.Checked;
+        if (SoundEffectVolumeValueText != null)
+        {
+            SoundEffectVolumeValueText.Text = ((int)Math.Round(_soundEffectPlayer.Volume * 100d)).ToString(CultureInfo.InvariantCulture);
+        }
+
+        // 清空并重新填充音效选择列表
+        SoundEffectSelectorMenuItem.Items.Clear();
+
+        try
+        {
+            if (!Directory.Exists(SoundEffectFolder))
+            {
+                SoundEffectSelectorMenuItem.IsEnabled = false;
+                SoundEffectSelectorMenuItem.Header = "音效文件夹不存在";
+                return;
+            }
+
+            SoundEffectSelectorMenuItem.IsEnabled = true;
+            SoundEffectSelectorMenuItem.Header = "选择音效";
+
+            var soundFiles = Directory.GetFiles(SoundEffectFolder, "*.mp3")
+                .Concat(Directory.GetFiles(SoundEffectFolder, "*.wav"))
+                .OrderBy(f => f)
+                .ToList();
+
+            if (soundFiles.Count == 0)
+            {
+                var emptyItem = new MenuItem
+                {
+                    Header = "无音效文件",
+                    Style = (Style)FindResource("WidgetContextMenuItemStyle"),
+                    IsEnabled = false
+                };
+                SoundEffectSelectorMenuItem.Items.Add(emptyItem);
+                return;
+            }
+
+            foreach (var filePath in soundFiles)
+            {
+                var fileName = Path.GetFileNameWithoutExtension(filePath);
+                var displayName = GetDisplayName(fileName);
+                var item = new MenuItem
+                {
+                    Header = displayName,
+                    Style = (Style)FindResource("WidgetContextMenuItemStyle"),
+                    IsCheckable = true,
+                    Tag = filePath
+                };
+                item.Click += SoundEffectItem_Click;
+
+                // 标记当前选中的音效
+                if (_soundEffectEnabled && string.Equals(_currentSoundEffectName, fileName, StringComparison.OrdinalIgnoreCase))
+                {
+                    item.IsChecked = true;
+                }
+
+                SoundEffectSelectorMenuItem.Items.Add(item);
+            }
+        }
+        catch
+        {
+            SoundEffectSelectorMenuItem.IsEnabled = false;
+            SoundEffectSelectorMenuItem.Header = "无法加载音效";
+        }
     }
 
-    private void UpdateNtePlaybackAdjustmentMenuItem()
+    private void SoundEffectEnabledMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (NtePlaybackAdjustmentMenuItem == null)
+        _soundEffectEnabled = SoundEffectEnabledMenuItem?.IsChecked == true;
+
+        if (_soundEffectEnabled)
         {
+            // 如果有上次选择的音效，自动播放
+            if (!string.IsNullOrEmpty(_currentSoundEffectName))
+            {
+                var filePath = Path.Combine(SoundEffectFolder, _currentSoundEffectName + ".mp3");
+                if (!File.Exists(filePath))
+                {
+                    // 尝试 .wav 扩展名
+                    filePath = Path.Combine(SoundEffectFolder, _currentSoundEffectName + ".wav");
+                }
+
+                if (File.Exists(filePath))
+                {
+                    _soundEffectPlayer.Play(filePath);
+                }
+            }
+        }
+        else
+        {
+            _soundEffectPlayer.Stop();
+        }
+    }
+
+    private void SoundEffectItem_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem item || item.Tag is not string filePath)
             return;
-        }
 
-        var state = NtePlaybackAdjustmentMenuState.Compute(
-            _isNteMode,
-            _ntePlaybackAdjustment.PlaybackRate,
-            _ntePlaybackAdjustment.PitchSemitones);
-        NtePlaybackAdjustmentMenuItem.Visibility = state.Visible ? Visibility.Visible : Visibility.Collapsed;
-        NtePlaybackAdjustmentMenuItem.Header = state.Header;
+        var fileName = Path.GetFileNameWithoutExtension(filePath);
+        _currentSoundEffectName = fileName;
+        _soundEffectEnabled = true;
 
-        if (NtePlaybackRateSlider != null && Math.Abs(NtePlaybackRateSlider.Value - _ntePlaybackAdjustment.PlaybackRate) > 0.0001d)
+        if (SoundEffectEnabledMenuItem != null)
         {
-            NtePlaybackRateSlider.Value = _ntePlaybackAdjustment.PlaybackRate;
+            SoundEffectEnabledMenuItem.IsChecked = true;
         }
 
-        if (NtePitchSlider != null && Math.Abs(NtePitchSlider.Value - _ntePlaybackAdjustment.PitchSemitones) > 0.0001d)
+        // 更新所有选择项的勾选状态
+        foreach (var child in SoundEffectSelectorMenuItem.Items)
         {
-            NtePitchSlider.Value = _ntePlaybackAdjustment.PitchSemitones;
+            if (child is MenuItem menuItem)
+            {
+                menuItem.IsChecked = string.Equals(menuItem.Tag as string, filePath, StringComparison.OrdinalIgnoreCase);
+            }
         }
 
-        if (NtePlaybackRateValueText != null)
+        _soundEffectPlayer.Play(filePath);
+    }
+
+    /// <summary>
+    /// 将文件名转换为友好显示名称
+    /// </summary>
+    private static string GetDisplayName(string fileName)
+    {
+        // 移除常见的编辑后缀
+        var name = fileName
+            .Replace("_edited", "")
+            .Replace("-edited", "")
+            .Replace("_", " ")
+            .Replace("-", " ");
+
+        // 首字母大写
+        if (name.Length > 0)
         {
-            NtePlaybackRateValueText.Text = _ntePlaybackAdjustment.PlaybackRateText;
+            name = char.ToUpperInvariant(name[0]) + name[1..];
         }
 
-        if (NtePitchValueText != null)
-        {
-            NtePitchValueText.Text = _ntePlaybackAdjustment.PitchText;
-        }
+        return name;
+    }
+
+    private void SoundEffectVolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (SoundEffectVolumeValueText is null)
+            return;
+
+        var percent = (int)e.NewValue;
+        SoundEffectVolumeValueText.Text = percent.ToString(CultureInfo.InvariantCulture);
+        _soundEffectPlayer.Volume = percent / 100f;
     }
 
     private bool DetectSystemDarkTheme()
@@ -385,21 +534,48 @@ public partial class MainWindow : Window
         return false;
     }
 
-    private void UpdateBrushResource(string key, Color color)
+    private void UpdateBrushResource(string key, Color color, bool animateTransition = false)
     {
         if (Resources[key] is SolidColorBrush brush)
         {
             if (brush.IsFrozen)
             {
-                Resources[key] = new SolidColorBrush(color);
+                var replacementBrush = new SolidColorBrush(animateTransition ? brush.Color : color);
+                if (animateTransition)
+                {
+                    SetBrushColor(replacementBrush, color, animateTransition: true);
+                }
+
+                Resources[key] = replacementBrush;
                 return;
             }
 
-            brush.Color = color;
+            SetBrushColor(brush, color, animateTransition);
             return;
         }
 
         Resources[key] = new SolidColorBrush(color);
+    }
+
+    private static void SetBrushColor(SolidColorBrush brush, Color targetColor, bool animateTransition)
+    {
+        var currentColor = brush.Color;
+        brush.BeginAnimation(SolidColorBrush.ColorProperty, null);
+        brush.Color = targetColor;
+
+        if (!animateTransition || currentColor == targetColor)
+        {
+            return;
+        }
+
+        brush.BeginAnimation(
+            SolidColorBrush.ColorProperty,
+            new ColorAnimation(currentColor, targetColor, ThemeTransitionDuration)
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+                FillBehavior = FillBehavior.Stop
+            },
+            HandoffBehavior.SnapshotAndReplace);
     }
 
     private SolidColorBrush GetResourceBrush(string key)
@@ -440,7 +616,7 @@ public partial class MainWindow : Window
         ClearPreviewState();
 
         Width = DefaultFreeWidth;
-        ApplyNteDefaultPositionLayout();
+        Height = DefaultFreeHeight;
 
         var targetLeft = GetDefaultFreeLeft();
         var targetTop = DefaultFreeTop;
@@ -448,11 +624,6 @@ public partial class MainWindow : Window
         _freeTop = targetTop;
 
         AnimateWindowPosition(targetLeft, targetTop);
-        if (_nteCoverWindow is { IsVisible: true })
-        {
-            _nteCoverWindow.PositionBesideOwner(this);
-        }
-
         AnimateRestoreEmphasis();
         EnsureTopmost();
     }

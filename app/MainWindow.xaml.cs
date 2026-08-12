@@ -36,7 +36,6 @@ public partial class MainWindow : Window
     private const double LeftAlignedRightDockInset = 184d;
     private const double DefaultFreeWidth = 430d;
     private const double DefaultFreeHeight = 46d;
-    private const double NteExpandedHeight = 190d;
     private const double DefaultFreeTop = 5d;
     private static readonly TimeSpan RestoreAnimationDuration = TimeSpan.FromMilliseconds(320);
     private static readonly TimeSpan RestoreEmphasisDuration = TimeSpan.FromMilliseconds(220);
@@ -55,10 +54,11 @@ public partial class MainWindow : Window
     private string _currentTrackSignature = string.Empty;
     private readonly Dictionary<string, bool> _trackLikeState = new(StringComparer.Ordinal);
     private readonly Dictionary<PlayerControlTarget, BitmapImage> _playerLogoCache = new();
+    private bool _isHovering;
     private bool _isDragging;
     private bool _isPointerDown;
+    private UIElement? _dragCaptureElement;
     private bool _isAlbumArtPointerDown;
-    private bool _isNteMode;
     private bool _wasDockedBeforeDrag;
     private bool _isDocked;
     private DockedStyle _currentDockedStyle = DockedStyle.Normal;
@@ -67,6 +67,7 @@ public partial class MainWindow : Window
     private double _freeTop;
     private SnapTarget? _currentPreview;
     private DispatcherTimer? _visibilityGuardTimer;
+    private DispatcherTimer? _dockedInputGuardTimer;
     private Point _dragStartScreen;
     private const double DragStartThreshold = 6d;
     private DateTime _suspendTopmostGuardUntilUtc = DateTime.MinValue;
@@ -102,6 +103,9 @@ public partial class MainWindow : Window
     private ProgressBarDisplayMode _progressBarDisplayMode = ProgressBarDisplayMode.InlineBottomBar;
     private DefaultPlaybackMode _defaultPlaybackMode = DefaultPlaybackMode.Sequential;
     private PlaybackProgressSnapshot? _lastPlaybackProgressSnapshot;
+    // 最近一次成功获取到的播放进度快照。用于 GSMTC 同步调用挂起时（常见于
+    // 汽水音乐/SodaMusic 进程未响应）的兜底，避免 UI 线程被 33ms 的高频轮询拖死。
+    private PlaybackProgressSnapshot? _lastSnapshotFallback;
     private double _lastStableTimelineDurationMs = -1d;
     private DateTimeOffset _lastSeenTimelineUpdateAt = DateTimeOffset.MinValue;
     private const double LyricScrollTriggerRatio = 0.9d;
@@ -116,18 +120,22 @@ public partial class MainWindow : Window
     private static readonly Regex BracketedTitlePartRegex = new(@"[\(\（\[\【].*?[\)\）\]\】]", RegexOptions.Compiled);
     private static readonly HttpClient LyricHttpClient = CreateLyricHttpClient();
     private readonly HashSet<string> _lyricFetchesInProgress = new(StringComparer.Ordinal);
+    private static readonly string SoundEffectFolder = @"C:\Users\liyueovo\Desktop\MusicBar\Sound";
+    private readonly 功能.氛围音效播放器 _soundEffectPlayer = new();
+    private bool _soundEffectEnabled;
+    private string? _currentSoundEffectName;
 
-    private static readonly Color LightBackgroundColor = (Color)ColorConverter.ConvertFromString("#F018181A");
-    private static readonly Color LightPreviewColor = (Color)ColorConverter.ConvertFromString("#FFEFF3F8");
+    private static readonly Color LightBackgroundColor = (Color)ColorConverter.ConvertFromString("#FFF4F6F8");
+    private static readonly Color LightPreviewColor = (Color)ColorConverter.ConvertFromString("#FFF8FAFC");
     private static readonly Color DarkBackgroundColor = (Color)ColorConverter.ConvertFromString("#F018181A");
     private static readonly Color DarkPreviewColor = (Color)ColorConverter.ConvertFromString("#F0202023");
     private static readonly Color LightBorderColor = (Color)ColorConverter.ConvertFromString("#220F172A");
     private static readonly Color DarkBorderColor = (Color)ColorConverter.ConvertFromString("#40FFFFFF");
-    private static readonly Color LightPrimaryTextColor = (Color)ColorConverter.ConvertFromString("#FFE8E8EA");
-    private static readonly Color LightSecondaryTextColor = (Color)ColorConverter.ConvertFromString("#C8C8C8CC");
+    private static readonly Color LightPrimaryTextColor = (Color)ColorConverter.ConvertFromString("#FF17212B");
+    private static readonly Color LightSecondaryTextColor = (Color)ColorConverter.ConvertFromString("#B817212B");
     private static readonly Color DarkPrimaryTextColor = (Color)ColorConverter.ConvertFromString("#FFE8E8EA");
     private static readonly Color DarkSecondaryTextColor = (Color)ColorConverter.ConvertFromString("#C8C8C8CC");
-    private static readonly Color LightIconColor = (Color)ColorConverter.ConvertFromString("#FFE8E8EA");
+    private static readonly Color LightIconColor = (Color)ColorConverter.ConvertFromString("#FF27313C");
     private static readonly Color DarkIconColor = (Color)ColorConverter.ConvertFromString("#FFE8E8EA");
     private static readonly Color LightButtonHoverColor = (Color)ColorConverter.ConvertFromString("#0F0F172A");
     private static readonly Color DarkButtonHoverColor = (Color)ColorConverter.ConvertFromString("#22FFFFFF");
@@ -149,16 +157,14 @@ public partial class MainWindow : Window
     private static readonly Color DarkContextMenuHoverColor = (Color)ColorConverter.ConvertFromString("#263A3A3D");
     // Keep hit-testing when docked: fully transparent (alpha=0) can become click-through in layered WPF windows.
     private static readonly Color DockedInteractiveTransparentColor = (Color)ColorConverter.ConvertFromString("#01000000");
-    private static readonly Color PlayerPickerPanelDefaultBackgroundColor = (Color)ColorConverter.ConvertFromString("#F018181A");
-    private static readonly Color PlayerPickerPanelDockedBackgroundColor = (Color)ColorConverter.ConvertFromString("#F018181A");
     private static readonly Color DockedContextMenuBackgroundColor = (Color)ColorConverter.ConvertFromString("#F018181A");
     private static readonly Color DockedContextMenuHoverColor = (Color)ColorConverter.ConvertFromString("#263A3A3D");
     private static readonly Color DockedContextMenuTextColor = (Color)ColorConverter.ConvertFromString("#FFE8E8EA");
-    private static readonly Color LightProgressTrackColor = (Color)ColorConverter.ConvertFromString("#403A3A3D");
+    private static readonly Color LightProgressTrackColor = (Color)ColorConverter.ConvertFromString("#260F172A");
     private static readonly Color DarkProgressTrackColor = (Color)ColorConverter.ConvertFromString("#403A3A3D");
-    private static readonly Color LightProgressFillColor = (Color)ColorConverter.ConvertFromString("#FFE8E8EA");
+    private static readonly Color LightProgressFillColor = (Color)ColorConverter.ConvertFromString("#CC17212B");
     private static readonly Color DarkProgressFillColor = (Color)ColorConverter.ConvertFromString("#FFE8E8EA");
-    private static readonly Color LightFloatingProgressBackgroundColor = (Color)ColorConverter.ConvertFromString("#F018181A");
+    private static readonly Color LightFloatingProgressBackgroundColor = (Color)ColorConverter.ConvertFromString("#F8FFFFFF");
     private static readonly Color DarkFloatingProgressBackgroundColor = (Color)ColorConverter.ConvertFromString("#F018181A");
 
     private readonly SolidColorBrush _widgetBackgroundBrush = new();
@@ -179,6 +185,7 @@ public partial class MainWindow : Window
     private IntPtr _kuGouHookWindow = IntPtr.Zero;
     private readonly WinEventDelegate _kuGouTitleChangedHandler;
     private bool _isContextMenuOpen;
+    private bool _useSystemTheme = true;
     // 圆角半径（0~23），默认15，通过右键菜单滑块调节
     private double _widgetCornerRadius = 15d;
     private double _widgetOpacity = 1d;
@@ -250,6 +257,8 @@ public partial class MainWindow : Window
         public string MainSpectrumPosition { get; set; } = "Top";
         public bool UseGradientBackground { get; set; }
         public string GradientBackgroundMode { get; set; } = "Linear";
+        public bool UseSystemTheme { get; set; } = true;
+        public bool IsDarkTheme { get; set; }
     }
 
     private static readonly FavoriteRule[] FavoriteRules =
@@ -385,12 +394,12 @@ public partial class MainWindow : Window
         Loaded += MainWindow_Loaded;
         SourceInitialized += MainWindow_SourceInitialized;
         Closed += MainWindow_Closed;
-        ApplyTheme(isDarkTheme: DetectSystemDarkTheme(), force: true);
+        LoadWidgetPreferences();
+        ApplyTheme(_useSystemTheme ? DetectSystemDarkTheme() : _isDarkTheme, force: true);
         SystemEvents.UserPreferenceChanged += SystemEvents_UserPreferenceChanged;
         WidgetBackgroundHost.Background = _widgetBackgroundBrush;
         WidgetBorder.Opacity = 1d;
         SourcePickerToggleScale.ScaleY = 1d;
-        LoadWidgetPreferences();
         InitializeMainSpectrum();
         ApplyWidgetCornerRadius();
         ApplyWidgetOpacity();
@@ -399,9 +408,8 @@ public partial class MainWindow : Window
         ApplyLikeState();
         UpdateDefaultPlaybackModeVisual();
         UpdatePlayerTargetButtonsVisual();
+        InitializeTrayIcon();
         StartLyricTimer();
-        InitializeNtePlayer();
-
         Width = DefaultFreeWidth;
         Height = DefaultFreeHeight;
         Left = GetDefaultFreeLeft();
@@ -410,8 +418,8 @@ public partial class MainWindow : Window
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        ApplyTheme(DetectSystemDarkTheme(), force: true);
-        
+        ApplyTheme(_useSystemTheme ? DetectSystemDarkTheme() : _isDarkTheme, force: true);
+
         Width = DefaultFreeWidth;
         Height = DefaultFreeHeight;
         Left = GetDefaultFreeLeft();
@@ -439,10 +447,6 @@ public partial class MainWindow : Window
                 RefreshFloatingProgressPopupPlacement();
             }
 
-            if (_nteCoverWindow is { IsVisible: true })
-            {
-                _nteCoverWindow.PositionBesideOwner(this);
-            }
         };
         SizeChanged += (_, _) =>
         {
@@ -468,7 +472,8 @@ public partial class MainWindow : Window
         StopLyricTimer();
         DetachSessionHandlers(_session);
         StopKuGouWindowTitleHook();
-        TeardownNtePlayer();
+        _soundEffectPlayer.Dispose();
+        DisposeTrayIcon();
 
         if (_sessionManager is not null)
         {
@@ -481,9 +486,10 @@ public partial class MainWindow : Window
     {
         _ = Dispatcher.InvokeAsync(() =>
         {
-            if (e.Category is UserPreferenceCategory.General or UserPreferenceCategory.Color)
+            if (_useSystemTheme
+                && e.Category is UserPreferenceCategory.General or UserPreferenceCategory.Color)
             {
-                ApplyTheme(DetectSystemDarkTheme());
+                ApplyTheme(DetectSystemDarkTheme(), animateTransition: true);
             }
 
             if (_isDocked)
@@ -516,18 +522,68 @@ public partial class MainWindow : Window
         };
         _visibilityGuardTimer.Tick += VisibilityGuardTimer_Tick;
         _visibilityGuardTimer.Start();
+
+        _dockedInputGuardTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(125)
+        };
+        _dockedInputGuardTimer.Tick += DockedInputGuardTimer_Tick;
+        _dockedInputGuardTimer.Start();
     }
 
     private void StopVisibilityGuard()
     {
-        if (_visibilityGuardTimer is null)
+        if (_visibilityGuardTimer is not null)
+        {
+            _visibilityGuardTimer.Stop();
+            _visibilityGuardTimer.Tick -= VisibilityGuardTimer_Tick;
+            _visibilityGuardTimer = null;
+        }
+
+        if (_dockedInputGuardTimer is not null)
+        {
+            _dockedInputGuardTimer.Stop();
+            _dockedInputGuardTimer.Tick -= DockedInputGuardTimer_Tick;
+            _dockedInputGuardTimer = null;
+        }
+    }
+
+    private void DockedInputGuardTimer_Tick(object? sender, EventArgs e)
+    {
+        if (!_isDocked
+            || _isDragging
+            || _isContextMenuOpen
+            || DateTime.UtcNow < _suspendTopmostGuardUntilUtc)
         {
             return;
         }
 
-        _visibilityGuardTimer.Stop();
-        _visibilityGuardTimer.Tick -= VisibilityGuardTimer_Tick;
-        _visibilityGuardTimer = null;
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero || !GetWindowRect(hwnd, out var windowRect))
+        {
+            return;
+        }
+
+        var cursor = GetCursorPos();
+        if (cursor.X < windowRect.Left
+            || cursor.X >= windowRect.Right
+            || cursor.Y < windowRect.Top
+            || cursor.Y >= windowRect.Bottom)
+        {
+            return;
+        }
+
+        var hitWindow = WindowFromPoint(cursor);
+        if (hitWindow == IntPtr.Zero)
+        {
+            return;
+        }
+
+        GetWindowThreadProcessId(hitWindow, out var hitProcessId);
+        if (hitProcessId != (uint)Environment.ProcessId)
+        {
+            EnsureTopmost();
+        }
     }
 
     private void VisibilityGuardTimer_Tick(object? sender, EventArgs e)
@@ -545,10 +601,27 @@ public partial class MainWindow : Window
 
         if (DateTime.UtcNow >= _suspendTopmostGuardUntilUtc)
         {
-            EnsureTopmost();
+            // 仅当 MusicBar 当前是前台进程时才主动 EnsureTopmost，否则会
+            // 形成 Z 序抢占循环，导致汽水音乐/SodaMusic 的 UI 线程被打断
+            // 而表现为卡死。
+            if (IsSelfForegroundWindow())
+            {
+                EnsureTopmost();
+            }
         }
 
         TryScheduleAutoModeSessionRefresh();
+    }
+
+    private bool IsSelfForegroundWindow()
+    {
+        var selfHwnd = new WindowInteropHelper(this).Handle;
+        if (selfHwnd == IntPtr.Zero)
+        {
+            return true;
+        }
+
+        return GetForegroundWindow() == selfHwnd;
     }
 
     private async Task InitializeMediaSessionAsync()
@@ -623,5 +696,63 @@ public partial class MainWindow : Window
             _isSessionRefreshInProgress = false;
         }
     }
+
+    /// <summary>
+    /// 鼠标悬停进入播放器时显示磨砂玻璃效果
+    /// </summary>
+    private void WidgetBorder_MouseEnter(object sender, MouseEventArgs e)
+    {
+        _isHovering = true;
+        if (_isDocked)
+        {
+            ShowAcrylicEffect();
+        }
+    }
+
+    /// <summary>
+    /// 鼠标离开播放器时隐藏磨砂玻璃效果
+    /// </summary>
+    private void WidgetBorder_MouseLeave(object sender, MouseEventArgs e)
+    {
+        _isHovering = false;
+        if (_isDocked)
+        {
+            HideAcrylicEffect();
+        }
+    }
+
+    /// <summary>
+    /// 显示磨砂玻璃效果
+    /// </summary>
+    private void ShowAcrylicEffect()
+    {
+        var brush = WidgetBackgroundHost.Background as SolidColorBrush;
+        if (brush is null || brush.IsFrozen)
+            return;
+
+        // 浅色半透明悬停背景：降低不透明度，白色图标仍清晰可见
+        var hoverColor = Color.FromArgb(0x60, 0xF5, 0xF5, 0xF5);
+
+        brush.BeginAnimation(SolidColorBrush.ColorProperty, null);
+        brush.Color = hoverColor;
+
+        brush.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation(
+            hoverColor,
+            TimeSpan.FromMilliseconds(200)));
+    }
+
+    /// <summary>
+    /// 隐藏磨砂玻璃效果
+    /// </summary>
+    private void HideAcrylicEffect()
+    {
+        var brush = WidgetBackgroundHost.Background as SolidColorBrush;
+        if (brush is null || brush.IsFrozen)
+            return;
+
+        SetBrushColor(brush, DockedInteractiveTransparentColor, animateTransition: true);
+    }
+
+
 
 }

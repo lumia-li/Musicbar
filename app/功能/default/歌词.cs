@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using System;
+﻿﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -89,6 +89,8 @@ public partial class MainWindow : Window
             _mainSpectrumPosition = ParseMainSpectrumPosition(preferences.MainSpectrumPosition);
             _useGradientBackground = preferences.UseGradientBackground;
             _gradientBackgroundMode = ParseGradientBackgroundMode(preferences.GradientBackgroundMode);
+            _useSystemTheme = preferences.UseSystemTheme;
+            _isDarkTheme = preferences.IsDarkTheme;
         }
         catch
         {
@@ -114,7 +116,9 @@ public partial class MainWindow : Window
                 MainSpectrumEnabled = _mainSpectrumEnabled,
                 MainSpectrumPosition = _mainSpectrumPosition.ToString(),
                 UseGradientBackground = _useGradientBackground,
-                GradientBackgroundMode = _gradientBackgroundMode.ToString()
+                GradientBackgroundMode = _gradientBackgroundMode.ToString(),
+                UseSystemTheme = _useSystemTheme,
+                IsDarkTheme = _isDarkTheme
             };
             File.WriteAllText(path, JsonSerializer.Serialize(preferences));
         }
@@ -579,10 +583,59 @@ public partial class MainWindow : Window
             return null;
         }
 
+        // GSMTC Session 的 GetTimelineProperties / GetPlaybackInfo 是同步 COM
+        // 调用，在汽水音乐/SodaMusic 进程未响应时会无限挂起。这里用 Task.Run
+        // 把同步调用移出 UI 线程 + 超时控制，避免 33ms 的高频轮询把 UI 线程
+        // 拖死。超时时返回最近一次成功的快照，保证 UI 不抖动。
+        var session = _session;
+        (GlobalSystemMediaTransportControlsSessionTimelineProperties? timeline,
+         GlobalSystemMediaTransportControlsSessionPlaybackStatus? status) probeResult;
         try
         {
-            var timeline = _session.GetTimelineProperties();
-            var playbackStatus = _session.GetPlaybackInfo().PlaybackStatus;
+            var timeout = TimeSpan.FromMilliseconds(40);
+            var task = Task.Run(() =>
+            {
+                var timeline = session.GetTimelineProperties();
+                var status = session.GetPlaybackInfo().PlaybackStatus;
+                return (timeline, status);
+            });
+
+            if (!task.Wait(timeout))
+            {
+                return _lastSnapshotFallback;
+            }
+
+            probeResult = task.Result;
+        }
+        catch
+        {
+            return _lastSnapshotFallback;
+        }
+
+        if (probeResult.timeline is null || probeResult.status is null)
+        {
+            return _lastSnapshotFallback;
+        }
+
+        var snapshot = BuildSnapshotFromTimeline(probeResult.timeline, probeResult.status.Value);
+        if (snapshot is not null)
+        {
+            _lastSnapshotFallback = snapshot;
+        }
+        else
+        {
+            snapshot = _lastSnapshotFallback;
+        }
+
+        return snapshot;
+    }
+
+    private PlaybackProgressSnapshot? BuildSnapshotFromTimeline(
+        GlobalSystemMediaTransportControlsSessionTimelineProperties timeline,
+        GlobalSystemMediaTransportControlsSessionPlaybackStatus playbackStatus)
+    {
+        try
+        {
             var now = DateTime.UtcNow;
 
             // GSMTC's timeline.Position is the player's position at the moment
