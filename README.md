@@ -60,14 +60,13 @@
 ## 🖼️ 效果预览
 
 > 播放器悬浮在屏幕边缘，显示歌曲信息、封面、歌词与频谱。
-> *（可在此处补充实际运行截图）*
 
 ---
 
 ## 🚀 快速开始
 
 ### 环境要求
-- **Windows 10 19041+** 或 **Windows 11**
+- **Windows 10** 或 **Windows 11**
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 
 ### 运行
