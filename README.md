@@ -26,10 +26,10 @@
 ### 🎤 支持的播放器
 - **QQ 音乐**
 - **网易云音乐** (NeteaseCloudMusic)
-- **Spotify**
+- **Spotify（未测试）**
 - **YouTube Music**
 - **酷狗音乐** (KuGouMusic)
-- **汽水音乐** (SodaMusic / 抖音)
+- **汽水音乐** (SodaMusic)
 - **MoeKoe Music**
 
 ### 💖 智能点赞 / 收藏
