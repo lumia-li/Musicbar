@@ -61,6 +61,10 @@
 
 > 播放器悬浮在屏幕边缘，显示歌曲信息、封面、歌词与频谱。
 
+### 🎬 演示视频
+- **抖音**：[点击观看](https://www.douyin.com/user/self?from_tab_name=main&modal_id=7672988738934377763)
+- **哔哩哔哩**：[点击观看](https://www.bilibili.com/video/BV18muC6aEtc/)
+
 ---
 
 ## 📥 下载
