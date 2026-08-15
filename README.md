@@ -72,7 +72,7 @@
 ### 国内下载（推荐）
 > 蓝奏云网盘，下载速度快，无需登录，适合国内用户。
 
-📦 **MusicBar 安装包**：[点击下载](https://wwbpw.lanzoue.com/iDBVC42i7pxa)，提取码：`cne1`
+📦 **MusicBar 安装包**：[点击下载](https://wwbpw.lanzoue.com/iaODv42iawgd)，提取码：`1pf7`
 
 ---
 
