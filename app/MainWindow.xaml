@@ -113,6 +113,49 @@
             </Setter>
         </Style>
 
+        <!-- 恢复隐藏按钮网格中的小图标按钮 -->
+        <Style x:Key="RestoreHiddenButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ItemRoot"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                BorderThickness="1"
+                                CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemRoot"
+                                        Property="Background"
+                                        Value="#14FFFFFF"/>
+                                <Setter TargetName="ItemRoot"
+                                        Property="BorderBrush"
+                                        Value="#30FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ItemRoot"
+                                        Property="Background"
+                                        Value="#26FFFFFF"/>
+                                <Setter TargetName="ItemRoot"
+                                        Property="BorderBrush"
+                                        Value="#45FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="CornerRadiusResetButtonStyle" TargetType="Button">
             <Setter Property="Width" Value="22"/>
             <Setter Property="Height" Value="24"/>
@@ -223,6 +266,32 @@
                                 Padding="4">
                             <StackPanel IsItemsHost="True"
                                         KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 工具提示：与右键菜单一致的主设计样式 -->
+        <Style TargetType="ToolTip">
+            <Setter Property="Background" Value="{DynamicResource ContextMenuBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ContextMenuBorderBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ContextMenuTextBrush}"/>
+            <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="HasDropShadow" Value="False"/>
+            <Setter Property="OverridesDefaultStyle" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToolTip">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="7"
+                                Padding="10,6"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter/>
                         </Border>
                     </ControlTemplate>
                 </Setter.Value>
@@ -447,9 +516,13 @@
         </Style>
     </Window.Resources>
 
-    <Grid MouseLeftButtonDown="Root_MouseLeftButtonDown"
+    <Grid x:Name="RootSurface"
+          MouseLeftButtonDown="Root_MouseLeftButtonDown"
           MouseMove="Root_MouseMove"
-          MouseLeftButtonUp="Root_MouseLeftButtonUp">
+          MouseLeftButtonUp="Root_MouseLeftButtonUp"
+          PreviewMouseLeftButtonDown="Root_PreviewMouseLeftButtonDown"
+          PreviewMouseMove="Root_PreviewMouseMove"
+          PreviewMouseLeftButtonUp="Root_PreviewMouseLeftButtonUp">
 
         <Grid.ContextMenu>
             <ContextMenu Style="{StaticResource WidgetContextMenuStyle}"
@@ -548,7 +621,7 @@
                                             Grid.Column="1"
                                             Style="{StaticResource ContextMenuSliderStyle}"
                                             Width="78"
-                                            Minimum="20" Maximum="100"
+                                            Minimum="0" Maximum="100"
                                             SmallChange="1" LargeChange="5"
                                             IsSnapToTickEnabled="True"
                                             TickFrequency="1"
@@ -613,6 +686,27 @@
                                   IsCheckable="True"
                                   Click="MainSpectrumBottomPositionMenuItem_Click"/>
                     </MenuItem>
+                    <MenuItem Header="显示模式"
+                              Style="{StaticResource WidgetContextMenuItemStyle}">
+                        <MenuItem x:Name="DefaultDisplayModeMenuItem"
+                                  Header="默认模式"
+                                  Style="{StaticResource WidgetContextMenuItemStyle}"
+                                  IsCheckable="True"
+                                  StaysOpenOnClick="True"
+                                  Click="DefaultDisplayModeMenuItem_Click"/>
+                        <MenuItem x:Name="CompactDisplayModeMenuItem"
+                                  Header="简洁模式"
+                                  Style="{StaticResource WidgetContextMenuItemStyle}"
+                                  IsCheckable="True"
+                                  StaysOpenOnClick="True"
+                                  Click="CompactDisplayModeMenuItem_Click"/>
+                        <MenuItem x:Name="CompactWithSpectrumDisplayModeMenuItem"
+                                  Header="简洁模式（带频谱）"
+                                  Style="{StaticResource WidgetContextMenuItemStyle}"
+                                  IsCheckable="True"
+                                  StaysOpenOnClick="True"
+                                  Click="CompactWithSpectrumDisplayModeMenuItem_Click"/>
+                    </MenuItem>
                 </MenuItem>
                 <MenuItem x:Name="SoundEffectMenu"
                           Header="氛围音效"
@@ -666,6 +760,25 @@
                                 </Grid>
                             </MenuItem.Header>
                         </MenuItem>
+                    </MenuItem>
+                </MenuItem>
+                <MenuItem x:Name="ShowLyricsMenuItem"
+                          Header="显示歌词"
+                          Style="{StaticResource WidgetContextMenuItemStyle}"
+                          IsCheckable="True"
+                          Click="ShowLyricsMenuItem_Click"/>
+                <MenuItem x:Name="RestoreHiddenButtonsMenuItem"
+                          Header="恢复隐藏按钮"
+                          Style="{StaticResource WidgetContextMenuItemStyle}"
+                          Visibility="Collapsed">
+                    <MenuItem x:Name="RestoreHiddenButtonsPanelMenuItem"
+                              Style="{StaticResource ContextMenuPanelItemStyle}"
+                              StaysOpenOnClick="True">
+                        <MenuItem.Header>
+                            <WrapPanel x:Name="RestoreHiddenButtonsPanel"
+                                       MaxWidth="240"
+                                       Margin="4,2"/>
+                        </MenuItem.Header>
                     </MenuItem>
                 </MenuItem>
                 <MenuItem Style="{StaticResource WidgetContextMenuItemStyle}"
@@ -868,6 +981,7 @@
                 </Border>
 
                 <StackPanel Grid.Column="2"
+                            x:Name="InfoPanel"
                             Margin="6,0,4,0"
                             VerticalAlignment="Center">
                     <TextBlock x:Name="SongTitleText"

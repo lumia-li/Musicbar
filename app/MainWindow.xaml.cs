@@ -193,6 +193,14 @@ public partial class MainWindow : Window
     private MainSpectrumPosition _mainSpectrumPosition = MainSpectrumPosition.Top;
     private bool _useGradientBackground;
     private GradientBackgroundMode _gradientBackgroundMode = GradientBackgroundMode.Linear;
+    // 通过长按按钮进入编辑模式隐藏的控件 key 集合（右键菜单可恢复）
+    private readonly HashSet<string> _hiddenButtons = new(StringComparer.Ordinal);
+    // 显示模式：默认 / 简洁 / 简洁（带频谱）
+    private WidgetDisplayMode _displayMode = WidgetDisplayMode.Default;
+    // 当前处于简洁类布局（简洁或带频谱简洁），即隐藏除歌名与歌词外的内容
+    private bool IsCompactDisplayLayout => _displayMode != WidgetDisplayMode.Default;
+    // 歌词行开关：开启显示滚动歌词，关闭则该行显示歌手名
+    private bool _lyricsDisplayEnabled = true;
 
     private const byte VK_CONTROL = 0x11;
     private const byte VK_MENU = 0x12;
@@ -259,6 +267,11 @@ public partial class MainWindow : Window
         public string GradientBackgroundMode { get; set; } = "Linear";
         public bool UseSystemTheme { get; set; } = true;
         public bool IsDarkTheme { get; set; }
+        public List<string>? HiddenButtons { get; set; }
+        public string? DisplayMode { get; set; }
+        // 旧版本字段，仅用于读取旧配置文件后迁移到 DisplayMode
+        public bool UseCompactDisplayMode { get; set; }
+        public bool ShowLyrics { get; set; } = true;
     }
 
     private static readonly FavoriteRule[] FavoriteRules =
@@ -470,6 +483,7 @@ public partial class MainWindow : Window
         StopVisibilityGuard();
         StopMainSpectrum();
         StopLyricTimer();
+        StopHideModePressTimer();
         DetachSessionHandlers(_session);
         StopKuGouWindowTitleHook();
         _soundEffectPlayer.Dispose();

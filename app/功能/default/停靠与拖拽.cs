@@ -66,6 +66,29 @@ public partial class MainWindow : Window
 
         if (e.ClickCount == 2)
         {
+            // 简洁类布局（含带频谱）下没有按钮可点，双击分为三个热区：
+            // 左 30%＝上一首，中 40%＝恢复默认位置，右 30%＝下一首。
+            if (IsCompactDisplayLayout && !IsCompactNanoDockedLayout())
+            {
+                var position = e.GetPosition(RootSurface);
+                var ratio = position.X / Math.Max(1d, ActualWidth);
+                if (ratio < 0.3d)
+                {
+                    PrevButton_Click(sender, e);
+                }
+                else if (ratio > 0.7d)
+                {
+                    NextButton_Click(sender, e);
+                }
+                else
+                {
+                    RestoreToDefaultPositionAnimated();
+                }
+
+                e.Handled = true;
+                return;
+            }
+
             RestoreToDefaultPositionAnimated();
             e.Handled = true;
             return;
@@ -120,6 +143,8 @@ public partial class MainWindow : Window
     {
         _isPointerDown = false;
         ReleasePendingDragCapture();
+        // 长按进入隐藏编辑模式时捕获的鼠标，在松开左键后立即归还。
+        ReleaseHideModeMouseCapture();
 
         if (!_isDragging)
         {
@@ -141,6 +166,7 @@ public partial class MainWindow : Window
         _isDragging = true;
         _wasDockedBeforeDrag = _isDocked;
         ReleasePendingDragCapture();
+        SuspendHeavyTimersForDragging();
 
         if (_isDocked)
         {
@@ -166,6 +192,7 @@ public partial class MainWindow : Window
     {
         ReleasePendingDragCapture();
         _isDragging = false;
+        ResumeHeavyTimersAfterDragging();
 
         var rect = new Rect(Left, Top, Width, Height);
         var confirmTarget = ResolveSnapTarget(rect, requireConfirm: true);
@@ -193,6 +220,7 @@ public partial class MainWindow : Window
     {
         ReleasePendingDragCapture();
         _isDragging = false;
+        ResumeHeavyTimersAfterDragging();
 
         if (_wasDockedBeforeDrag)
         {
@@ -217,6 +245,28 @@ public partial class MainWindow : Window
         }
 
         _dragCaptureElement = null;
+    }
+
+    /// <summary>
+    /// DragMove 的原生移动循环仍会泵消息，DispatcherTimer 在拖动期间照常触发。
+    /// 33ms 歌词轮询（含最长 40ms 的同步 COM 等待）与 80ms 频谱重建会挤压
+    /// 移动循环的消息处理，表现为拖动卡顿，因此拖动期间将两者挂起。
+    /// </summary>
+    private void SuspendHeavyTimersForDragging()
+    {
+        _lyricTimer?.Stop();
+        _mainSpectrumTimer?.Stop();
+    }
+
+    private void ResumeHeavyTimersAfterDragging()
+    {
+        if (_lyricTimer is not null && !_lyricTimer.IsEnabled)
+        {
+            _lyricTimer.Start();
+        }
+
+        // 频谱是否恢复运行由可见性与播放状态共同决定。
+        UpdateMainSpectrumPopupVisibility();
     }
 
     private void DockToTaskbarByPreference()
@@ -377,20 +427,69 @@ public partial class MainWindow : Window
     private void ApplyDockedContentLayout()
     {
         var isCompactNano = _isDocked && _currentDockedStyle == DockedStyle.Nano;
+        if (IsCompactDisplayLayout)
+        {
+            // 简洁类布局（含 Nano 迷你停靠）统一显示歌名与作者，
+            // Nano 只是窗口更窄，避免迷你窗在简洁模式下变成空白。
+            ApplyCompactDisplayContentLayout();
+            return;
+        }
+
+        InfoPanel.HorizontalAlignment = HorizontalAlignment.Stretch;
+        InfoPanel.Margin = new Thickness(6, 0, 4, 0);
+        SongTitleText.TextAlignment = TextAlignment.Left;
+        ArtistText.TextAlignment = TextAlignment.Left;
+
         var hasVisibleLyric = !isCompactNano && !string.IsNullOrWhiteSpace(LyricBaseText.Text);
 
-        SourcePickerToggleButton.Visibility = isCompactNano ? Visibility.Collapsed : Visibility.Visible;
+        SourcePickerToggleButton.Visibility = ResolveHideableVisibility(
+            isCompactNano ? Visibility.Collapsed : Visibility.Visible, "sourcePicker");
+        AlbumArtHitArea.Visibility = ResolveHideableVisibility(Visibility.Visible, "albumArt");
         SongTitleText.Visibility = isCompactNano ? Visibility.Collapsed : Visibility.Visible;
         ArtistText.Visibility = isCompactNano
             ? Visibility.Collapsed
             : hasVisibleLyric ? Visibility.Collapsed : Visibility.Visible;
         LyricLineHost.Visibility = hasVisibleLyric ? Visibility.Visible : Visibility.Collapsed;
-        LikeButton.Visibility = isCompactNano ? Visibility.Collapsed : Visibility.Visible;
+        LikeButton.Visibility = ResolveHideableVisibility(
+            isCompactNano ? Visibility.Collapsed : Visibility.Visible, "like");
         InlineProgressHost.Visibility = isCompactNano
             ? Visibility.Collapsed
             : _progressBarDisplayMode == ProgressBarDisplayMode.InlineBottomBar ? Visibility.Visible : Visibility.Collapsed;
 
         var transportVisibility = isCompactNano ? Visibility.Collapsed : Visibility.Visible;
+        PrevButton.Visibility = ResolveHideableVisibility(transportVisibility, "prev");
+        PlayPauseButton.Visibility = ResolveHideableVisibility(transportVisibility, "playPause");
+        NextButton.Visibility = ResolveHideableVisibility(transportVisibility, "next");
+        DefaultPlaybackModeButton.Visibility = ResolveHideableVisibility(transportVisibility, "playbackMode");
+
+        RefreshActivePlayerLogoLayout();
+    }
+
+    /// <summary>被用户隐藏的控件始终返回 Collapsed，其余沿用基础可见性。</summary>
+    private Visibility ResolveHideableVisibility(Visibility baseVisibility, string key)
+    {
+        return _hiddenButtons.Contains(key) ? Visibility.Collapsed : baseVisibility;
+    }
+
+    /// <summary>简洁模式布局：仅显示歌名与歌词（无歌词时显示歌名+歌手），整体居中。</summary>
+    private void ApplyCompactDisplayContentLayout()
+    {
+        SourcePickerToggleButton.Visibility = Visibility.Collapsed;
+        AlbumArtHitArea.Visibility = Visibility.Collapsed;
+        SongTitleText.Visibility = Visibility.Visible;
+        LikeButton.Visibility = Visibility.Collapsed;
+        InlineProgressHost.Visibility = Visibility.Collapsed;
+
+        var hasVisibleLyric = !string.IsNullOrWhiteSpace(LyricBaseText.Text);
+        ArtistText.Visibility = hasVisibleLyric ? Visibility.Collapsed : Visibility.Visible;
+        LyricLineHost.Visibility = hasVisibleLyric ? Visibility.Visible : Visibility.Collapsed;
+
+        InfoPanel.HorizontalAlignment = HorizontalAlignment.Center;
+        InfoPanel.Margin = new Thickness(0);
+        SongTitleText.TextAlignment = TextAlignment.Center;
+        ArtistText.TextAlignment = TextAlignment.Center;
+
+        var transportVisibility = Visibility.Collapsed;
         PrevButton.Visibility = transportVisibility;
         PlayPauseButton.Visibility = transportVisibility;
         NextButton.Visibility = transportVisibility;
@@ -418,6 +517,12 @@ public partial class MainWindow : Window
     private void RefreshActivePlayerLogoLayout()
     {
         if (ActivePlayerLogoImage.Source is null)
+        {
+            ActivePlayerLogoButton.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        if (IsCompactDisplayLayout)
         {
             ActivePlayerLogoButton.Visibility = Visibility.Collapsed;
             return;

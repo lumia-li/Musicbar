@@ -80,7 +80,7 @@ public partial class MainWindow : Window
                 _widgetCornerRadius = preferences.CornerRadius;
             }
 
-            if (preferences.Opacity >= 0.2d && preferences.Opacity <= 1d)
+            if (preferences.Opacity >= 0d && preferences.Opacity <= 1d)
             {
                 _widgetOpacity = preferences.Opacity;
             }
@@ -91,6 +91,26 @@ public partial class MainWindow : Window
             _gradientBackgroundMode = ParseGradientBackgroundMode(preferences.GradientBackgroundMode);
             _useSystemTheme = preferences.UseSystemTheme;
             _isDarkTheme = preferences.IsDarkTheme;
+
+            if (preferences.HiddenButtons is not null)
+            {
+                foreach (var key in preferences.HiddenButtons)
+                {
+                    _hiddenButtons.Add(key);
+                }
+            }
+
+            // 新版以字符串保存显示模式；旧配置只有 bool 字段，做一次迁移。
+            if (!string.IsNullOrWhiteSpace(preferences.DisplayMode))
+            {
+                _displayMode = ParseDisplayMode(preferences.DisplayMode);
+            }
+            else if (preferences.UseCompactDisplayMode)
+            {
+                _displayMode = WidgetDisplayMode.Compact;
+            }
+
+            _lyricsDisplayEnabled = preferences.ShowLyrics;
         }
         catch
         {
@@ -118,7 +138,10 @@ public partial class MainWindow : Window
                 UseGradientBackground = _useGradientBackground,
                 GradientBackgroundMode = _gradientBackgroundMode.ToString(),
                 UseSystemTheme = _useSystemTheme,
-                IsDarkTheme = _isDarkTheme
+                IsDarkTheme = _isDarkTheme,
+                HiddenButtons = _hiddenButtons.ToList(),
+                DisplayMode = _displayMode.ToString(),
+                ShowLyrics = _lyricsDisplayEnabled
             };
             File.WriteAllText(path, JsonSerializer.Serialize(preferences));
         }
@@ -235,6 +258,7 @@ public partial class MainWindow : Window
     private void RefreshFloatingProgressPopupVisibility(bool hasRenderableProgress)
     {
         var shouldShow = _progressBarDisplayMode == ProgressBarDisplayMode.FloatingBelow
+            && !IsCompactDisplayLayout
             && hasRenderableProgress
             && !_isContextMenuOpen
             && !PlayerPickerPopup.IsOpen
@@ -445,10 +469,7 @@ public partial class MainWindow : Window
         var lineKey = $"{currentLine.StartMs.ToString(CultureInfo.InvariantCulture)}-{currentLine.Text}";
         var lineChanged = !string.Equals(_lastLyricLineKey, lineKey, StringComparison.Ordinal);
 
-        var playbackStatus = playbackProgress?.PlaybackStatus ?? GlobalSystemMediaTransportControlsSessionPlaybackStatus.Closed;
         var isPlaying = playbackProgress?.IsPlaying == true;
-
-        System.Diagnostics.Debug.WriteLine($"[Lyric] Status={playbackStatus}, isPlaying={isPlaying}, lineChanged={lineChanged}, lastKey='{_lastLyricLineKey}', newKey='{lineKey}'");
 
         _lastLyricLineKey = lineKey;
 
@@ -457,12 +478,10 @@ public partial class MainWindow : Window
         // When paused and line hasn't changed, only update played width without touching scroll
         if (!isPlaying && !lineChanged)
         {
-            System.Diagnostics.Debug.WriteLine("[Lyric] PAUSED + NO LINE CHANGE - only updating played width");
             LyricPlayedClip.Rect = new Rect(0, 0, Math.Max(0d, playedWidth), LyricLineHost.Height);
             return;
         }
 
-        System.Diagnostics.Debug.WriteLine($"[Lyric] Calling ShowLyricText with resetScroll={lineChanged}");
         ShowLyricText(currentLine.Text, playedWidth, resetScroll: lineChanged);
     }
 
@@ -474,7 +493,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (IsCompactNanoDockedLayout())
+        if (IsCompactNanoDockedLayout() && !IsCompactDisplayLayout)
+        {
+            HideLyricLine();
+            return;
+        }
+
+        // 歌词显示被关闭时，该行始终显示歌手名。
+        if (!_lyricsDisplayEnabled)
         {
             HideLyricLine();
             return;
@@ -484,7 +510,23 @@ public partial class MainWindow : Window
         LyricLineHost.Visibility = Visibility.Visible;
         LyricBaseText.Text = text;
         LyricPlayedText.Text = text;
-        LyricTrackCanvas.Width = Math.Max(LyricLineHost.ActualWidth, MeasureLyricTextWidth(text));
+
+        // 简洁类布局下整体居中：文本比可视区窄时让画布居中显示，宽于可视区时
+        // 保持左对齐并沿用原有滚动逻辑。
+        var lyricTextWidth = MeasureLyricTextWidth(text);
+        if (IsCompactDisplayLayout)
+        {
+            LyricTrackCanvas.Width = lyricTextWidth;
+            LyricTrackCanvas.HorizontalAlignment = lyricTextWidth <= LyricLineHost.ActualWidth + 0.5d
+                ? HorizontalAlignment.Center
+                : HorizontalAlignment.Left;
+        }
+        else
+        {
+            LyricTrackCanvas.HorizontalAlignment = HorizontalAlignment.Stretch;
+            LyricTrackCanvas.Width = Math.Max(LyricLineHost.ActualWidth, lyricTextWidth);
+        }
+
         LyricPlayedClip.Rect = new Rect(0, 0, Math.Max(0d, playedWidth), LyricLineHost.Height);
 
         if (resetScroll)
@@ -502,7 +544,7 @@ public partial class MainWindow : Window
     private void HideLyricLine()
     {
         LyricLineHost.Visibility = Visibility.Collapsed;
-        ArtistText.Visibility = IsCompactNanoDockedLayout() ? Visibility.Collapsed : Visibility.Visible;
+        ArtistText.Visibility = (IsCompactNanoDockedLayout() && !IsCompactDisplayLayout) ? Visibility.Collapsed : Visibility.Visible;
         LyricBaseText.Text = string.Empty;
         LyricPlayedText.Text = string.Empty;
         LyricPlayedClip.Rect = new Rect(0, 0, 0, LyricLineHost.Height);
@@ -520,6 +562,29 @@ public partial class MainWindow : Window
         ResetLyricProgressClock();
         HideLyricLine();
         ResetPlaybackProgressUi();
+    }
+
+    private void ShowLyricsMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        _lyricsDisplayEnabled = ShowLyricsMenuItem.IsChecked;
+        if (!_lyricsDisplayEnabled)
+        {
+            // 立即收起歌词行并清空滚动状态，该行恢复显示歌手名。
+            HideLyricLine();
+        }
+
+        ApplyDockedVisualState();
+        SaveWidgetPreferences();
+    }
+
+    private void UpdateShowLyricsMenuItem()
+    {
+        if (ShowLyricsMenuItem is null)
+        {
+            return;
+        }
+
+        ShowLyricsMenuItem.IsChecked = _lyricsDisplayEnabled;
     }
 
     private void ResetLyricProgressClock()

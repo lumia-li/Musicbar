@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NAudio.Dsp;
 using NAudio.Wave;
@@ -15,6 +16,8 @@ public partial class MainWindow : Window
     private const int MainSpectrumSampleCount = 2048;
     private readonly double[] _mainSpectrumSmoothedBars = new double[MainSpectrumBarCount];
     private readonly float[] _mainSpectrumSamples = new float[MainSpectrumSampleCount];
+    // 复用的条形 Border 缓存，避免每帧 Clear + 重建
+    private readonly List<Border> _mainSpectrumBarVisuals = new();
     private readonly object _mainSpectrumSampleLock = new();
     private DispatcherTimer? _mainSpectrumTimer;
     private WasapiLoopbackCapture? _mainSpectrumCapture;
@@ -55,12 +58,12 @@ public partial class MainWindow : Window
         }
 
         var state = MainSpectrumPopupState.Compute(
-            _mainSpectrumEnabled,
+            _mainSpectrumEnabled && _displayMode != WidgetDisplayMode.Compact,
             _mainSpectrumIsPlaying,
             HasVisibleMainSpectrumEnergy());
         MainSpectrumHost.Visibility = state.Visible ? Visibility.Visible : Visibility.Collapsed;
 
-        if (_mainSpectrumIsPlaying)
+        if (state.Visible && _mainSpectrumIsPlaying)
         {
             StartMainSpectrumCapture();
             _mainSpectrumTimer?.Start();
@@ -72,6 +75,8 @@ public partial class MainWindow : Window
         }
         else
         {
+            // 频谱不可见（简洁模式或已禁用）时彻底停止，
+            // 避免 WASAPI 采集与每帧重建循环在后台空转。
             _mainSpectrumTimer?.Stop();
             StopMainSpectrumCapture();
         }
@@ -79,16 +84,17 @@ public partial class MainWindow : Window
 
     private void RenderMainSpectrum()
     {
-        if (MainSpectrumBars == null)
+        if (MainSpectrumBars == null || MainSpectrumHost == null)
         {
             return;
         }
 
-        MainSpectrumBars.Items.Clear();
         var bars = MainSpectrumAnalyzer.CalculateBars(GetMainSpectrumSamples(), _mainSpectrumSampleRate, MainSpectrumBarCount);
         var barColor = GetMainSpectrumColor();
         var layout = MainSpectrumOverlayLayout.Compute(_mainSpectrumPosition, MainSpectrumHost.Height);
         var visibleEnergy = 0d;
+
+        EnsureMainSpectrumBarVisuals();
 
         for (var i = 0; i < MainSpectrumBarCount; i++)
         {
@@ -97,23 +103,47 @@ public partial class MainWindow : Window
             visibleEnergy = Math.Max(visibleEnergy, _mainSpectrumSmoothedBars[i]);
 
             var visual = MainSpectrumVisual.CreateBar(_mainSpectrumSmoothedBars[i]);
-            MainSpectrumBars.Items.Add(new Border
+            var border = _mainSpectrumBarVisuals[i];
+            border.Width = visual.Width;
+            border.Height = visual.Height;
+            border.Margin = new Thickness(visual.HorizontalMargin, 0, visual.HorizontalMargin, 0);
+            border.VerticalAlignment = layout.BarVerticalAlignment;
+
+            // 复用同一份可变画刷，仅在主题/专辑色变化时更新颜色，
+            // 避免每帧新建 100 个画刷造成 GC 压力。
+            if (border.Background is SolidColorBrush brush)
             {
-                Width = visual.Width,
-                Height = visual.Height,
-                Margin = new Thickness(visual.HorizontalMargin, 0, visual.HorizontalMargin, 0),
-                CornerRadius = new CornerRadius(1),
-                VerticalAlignment = layout.BarVerticalAlignment,
-                Background = new SolidColorBrush(barColor),
-                SnapsToDevicePixels = true,
-                UseLayoutRounding = true
-            });
+                if (brush.Color != barColor)
+                {
+                    brush.Color = barColor;
+                }
+            }
+            else
+            {
+                border.Background = new SolidColorBrush(barColor);
+            }
         }
 
         if (!_mainSpectrumIsPlaying && visibleEnergy <= 0.015d)
         {
             _mainSpectrumTimer?.Stop();
             MainSpectrumHost.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    /// <summary>按需构建 100 个条形 Border 并只添加一次，后续帧仅更新属性。</summary>
+    private void EnsureMainSpectrumBarVisuals()
+    {
+        while (_mainSpectrumBarVisuals.Count < MainSpectrumBarCount)
+        {
+            var border = new Border
+            {
+                CornerRadius = new CornerRadius(1),
+                SnapsToDevicePixels = true,
+                UseLayoutRounding = true
+            };
+            _mainSpectrumBarVisuals.Add(border);
+            MainSpectrumBars.Items.Add(border);
         }
     }
 

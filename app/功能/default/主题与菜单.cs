@@ -303,6 +303,7 @@ public partial class MainWindow : Window
 
     private void WidgetContextMenu_Opened(object sender, RoutedEventArgs e)
     {
+        ExitHideEditMode();
         CollapsePlayerPickerOverlay();
         _isContextMenuOpen = true;
         _suspendTopmostGuardUntilUtc = DateTime.UtcNow.AddMilliseconds(350);
@@ -327,7 +328,10 @@ public partial class MainWindow : Window
         UpdateGradientMenuItems();
         UpdateThemeMenuItems();
         UpdateMainSpectrumMenuItem();
+        UpdateDisplayModeMenuItems();
+        UpdateShowLyricsMenuItem();
         PopulateSoundEffectMenu();
+        PopulateRestoreHiddenButtonsMenu();
     }
 
     private void WidgetContextMenu_Closed(object sender, RoutedEventArgs e)
