@@ -74,7 +74,7 @@
 ### GitHub Release（推荐）
 > 最新版本，随更新实时发布。
 
-📦 **MusicBar 安装包**：[前往 Releases 页面下载](https://github.com/lumia-li/Musicbar/releases/latest)
+📦 **MusicBar 安装包**：[前往 Releases 页面下载](https://github.com/lumia-li/Musicbar/releases)
 
 ### 国内下载
 > 蓝奏云网盘，下载速度快，无需登录，适合国内用户。
