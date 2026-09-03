@@ -9,6 +9,8 @@
 
 ---
 
+> **English Release Notes**: [Release-Notes-EN.md](Release-Notes-EN.md)
+
 ## ✨ 项目简介
 
 **MusicBar** 是一个基于 **C# / WPF（.NET 8）** 开发的 Windows 桌面音乐悬浮控件。它通过系统级 **GSMTC（Global System Media Transport Controls）** 接口与 Windows 自带的多媒体会话机制，无需依赖任何特定播放器的插件或 API，即可统一控制主流的音乐软件。
