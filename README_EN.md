@@ -1,6 +1,6 @@
 # 🎵 MusicBar
 
-**English** | [简体中文](README.md)
+[简体中文](README.md) | **English**
 
 > A global music control widget that snaps to the Windows taskbar, letting you easily control the music currently playing without ever switching away from the window you are in.
 
