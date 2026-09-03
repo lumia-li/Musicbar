@@ -1,0 +1,76 @@
+name: 安装问题
+description: 安装或首次运行 MusicBar 时遇到问题
+title: "[安装问题] "
+labels: ["安装"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！请尽量填写以下信息，信息越完整问题越容易被定位。
+        提交前建议先阅读 README 的安装说明。
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: 安装方式
+      description: 你是如何安装 MusicBar 的？
+      options:
+        - 安装包（setup / installer）
+        - 便携版（直接解压运行 MusicBar.exe）
+        - 从源码运行（dotnet run）
+        - 其他
+    validations:
+      required: true
+
+  - type: dropdown
+    id: windows-version
+    attributes:
+      label: Windows 版本
+      options:
+        - Windows 11
+        - Windows 10
+        - Windows Server
+        - 更早版本
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: MusicBar 版本
+      description: 例如 2.1.0（可在右键菜单或关于中查看）
+      placeholder: "2.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-stage
+    attributes:
+      label: 问题出现在哪个阶段
+      options:
+        - 下载安装包时
+        - 运行安装程序时
+        - 安装完成后首次启动
+        - 安装后缺少文件（如音效、图标）
+        - 卸载 / 更新时
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 问题描述
+      description: 具体发生了什么？是否有报错弹窗？杀毒软件是否拦截？
+      placeholder: |
+        例如：双击安装包后没有任何反应 / 提示"Windows 已保护你的电脑" /
+        启动后窗口一闪而过
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: 截图或录屏
+      description: 拖拽图片文件到此处上传（如有报错弹窗请务必截图）
+    validations:
+      required: false
