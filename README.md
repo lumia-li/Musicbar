@@ -1,6 +1,6 @@
 # 🎵 MusicBar
 
-[English](README_EN.md) | **简体中文**
+**简体中文** | [English](README_EN.md)
 
 > 一款可以吸附到 Windows 任务栏上的全局音乐控制悬浮窗，让你在不切走任何窗口的情况下，轻松掌控正在播放的音乐。
 
