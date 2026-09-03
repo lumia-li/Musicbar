@@ -1,0 +1,63 @@
+name: 新功能许愿
+description: 希望 MusicBar 增加新功能或改进现有功能
+title: "[许愿] "
+labels: ["功能建议"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        🌟 欢迎许愿！描述得越具体，功能越容易被实现。
+        提交前建议先搜索一下已有 issue，避免重复许愿。
+
+  - type: dropdown
+    id: wish-type
+    attributes:
+      label: 许愿类型
+      options:
+        - 界面 / 显示效果
+        - 播放控制
+        - 歌词 / 音效
+        - 支持新的播放器
+        - 性能优化
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: wish-content
+    attributes:
+      label: 许愿内容
+      description: 希望实现什么功能？期望的交互方式是怎样的？
+      placeholder: 例如：希望悬浮窗支持鼠标滚轮调节音量
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: 使用场景
+      description: 什么场景下会用到这个功能？解决了什么痛点？
+      placeholder: 例如：打游戏全屏时不想切窗口调音量
+    validations:
+      required: true
+
+  - type: input
+    id: reference
+    attributes:
+      label: 参考示例
+      description: 其他软件里有类似功能吗？可以给个名字或截图
+      placeholder: 例如：类似某播放器的桌面歌词锁定功能
+    validations:
+      required: false
+
+  - type: dropdown
+    id: wish-level
+    attributes:
+      label: 你有多想要这个功能
+      options:
+        - 随缘 🙏
+        - 挺想要的
+        - 非常想要
+        - 没有它不行
+    validations:
+      required: true
