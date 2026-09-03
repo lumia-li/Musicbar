@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 使用说明 / 常见问题
+    url: https://github.com/lumia-li/Musicbar#readme
+    about: 安装与使用问题请先查看 README
+  - name: 最新版本下载
+    url: https://github.com/lumia-li/Musicbar/releases/latest
+    about: 请确认你使用的是最新版本
