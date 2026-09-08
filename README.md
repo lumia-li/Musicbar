@@ -39,7 +39,7 @@
 - **按钮隐藏 / 恢复**：长按任意按钮进入编辑模式，点击红色 × 即可隐藏；右键菜单「恢复隐藏按钮」随时找回
 - **自定义圆角 / 不透明度 / 渐变背景**，一切由你掌控
 
-### 🪟 其心功能
+### 🪟 其他功能
 - **系统托盘**图标，最小化后常驻后台
 - **氛围音效**循环播放
 - ...
@@ -125,6 +125,10 @@ app/功能/default/
 ├── 显示模式.cs         # 标准 / 简洁 / 简洁+频谱布局切换
 └── 主题与菜单.cs       # 深浅色主题/右键菜单
 ```
+## 配置文件
+- 设置文件 C:\Users\<username>\AppData\Local\MusicBar\widget-preferences.json
+- 歌词缓存	C:\Users\<username>\AppData\Local\MusicBar\Lyrics\
+- 崩溃日志	C:\Users\<username>\AppData\Roaming\MusicBar\crash.log
 
 ---
 
