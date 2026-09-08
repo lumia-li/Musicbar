@@ -126,6 +126,12 @@ app/功能/default/
 └── 主题与菜单.cs       # Themes & context menu
 ```
 
+## Configuration Files
+- Settings file: C:\Users\<username>\AppData\Local\MusicBar\widget-preferences.json
+- Lyrics cache: C:\Users\<username>\AppData\Local\MusicBar\Lyrics\
+- Crash log: C:\Users\<username>\AppData\Roaming\MusicBar\crash.log
+
+
 ---
 
 ## 🗂️ Directory Structure
