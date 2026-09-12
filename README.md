@@ -2,6 +2,9 @@
 
 **简体中文** | [English](README_EN.md)
 
+> [!IMPORTANT]  
+> 软件遇到严重bug,会导致软件本体和播放器一同卡死,连带explorer崩溃.目前无法修复
+
 > 一款可以吸附到 Windows 任务栏上的全局音乐控制悬浮窗，让你在不切走任何窗口的情况下，轻松掌控正在播放的音乐。
 
 ![Platform](https://img.shields.io/badge/platform-Windows-0078D6)
