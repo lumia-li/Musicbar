@@ -3,7 +3,7 @@
 **简体中文** | [English](README_EN.md)
 
 > [!IMPORTANT]
-> 使用过程中，可能会导致软件本体和播放器一同卡死，连带 explorer 崩溃。目前无法修复。
+> 使用过程中，可能会导致软件本体和播放器一同卡死，连带 explorer 崩溃。
 >
 > （PS：软件针对 Windows 11 优化，因此在 Windows 10 的问题可能处理不到）
 
